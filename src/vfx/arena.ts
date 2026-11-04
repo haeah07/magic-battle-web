@@ -12,6 +12,7 @@ import { addUpdate, Img, RT, V2, v2 } from '../ui/engine';
 import { makeImage, rect } from '../ui/factory';
 import { clamp01, lerp, rand } from '../ui/mathf';
 import { art, SF } from '../ui/sprites';
+import { emph, focus } from './focus';
 
 export const FLOOR_TILT = 0.42;
 const add = (a: V2, b: V2) => v2(a.x + b.x, a.y + b.y);
@@ -82,8 +83,8 @@ export class ArenaView {
     this.padHome = this.pad('PadHome', add(LAYOUT.homeTower, v2(0, 26)), 340, pad);
     this.padAwayGlow = this.pad('PadAwayGlow', add(LAYOUT.awayTower, v2(0, 22)), 360, SF.softBlob());
     this.padAway = this.pad('PadAway', add(LAYOUT.awayTower, v2(0, 22)), 290, pad);
-    this.brazier('BrazierTL', v2(-700, 120), 0.8);
-    this.brazier('BrazierBR', v2(700, -300), 0.95);
+    this.brazier('BrazierTL', v2(-560, 220), 0.75);
+    this.brazier('BrazierTR', v2(560, 220), 0.75);
     addUpdate({ rt: this.rt, update: dt => this.update(dt) });
   }
 
@@ -123,6 +124,15 @@ export class ArenaView {
     this.flames.push(glow, flame, core);
   }
 
+  /**
+   * Turn swap: rotate the floor art (degrees, negative = clockwise, same direction as the towers' orbit)
+   * and fade the side-coloured lanes/pads (0..1) so they can switch colours while hidden.
+   */
+  setTurn(deg: number, fade: number) {
+    this.floor.rt.rotation = deg;
+    const a = 1 - Math.max(0, Math.min(1, fade));
+    for (const i of [this.laneHome, this.laneAway, this.laneAxis, this.padHome, this.padAway, this.padHomeGlow, this.padAwayGlow]) i.rt.groupAlpha = a;
+  }
   setPerspective(home: Color, away: Color) {
     this.homeColor = home; this.awayColor = away;
     this.laneHome.color = C(home.r, home.g, home.b, 0.13);
@@ -141,20 +151,20 @@ export class ArenaView {
 
   private update(dt: number) {
     this.t += dt;
-    const T = this.t, k = 1 - Math.exp(-dt * 1.5), A = VFX.ambient;
+    const T = this.t, k = 1 - Math.exp(-dt * 1.5), A = VFX.ambient * emph(focus.v.environment, 0.5);
     this.bright = lerpColor(this.bright, this.target, k);
     this.intensity = lerp(this.intensity, this.targetIntensity, k);
     const neutral = C(0.92, 0.93, 1);
     this.floor.color = lerpColor(neutral, lerpColor(neutral, this.bright, 0.35), this.intensity * 0.5);
     const b = this.bright, I = this.intensity;
-    this.floorTint.color = C(b.r, b.g, b.b, I * 0.16 * VFX.fieldChange);
-    this.floorGlow.color = C(b.r, b.g, b.b, 0.08 + I * 0.16);
-    this.floorRim.color = C(b.r, b.g, b.b, I * 0.35);
+    this.floorTint.color = C(b.r, b.g, b.b, I * 0.16 * VFX.fieldIdle);
+    this.floorGlow.color = C(b.r, b.g, b.b, (0.08 + I * 0.16) * emph(VFX.fieldIdle, 0.4));
+    this.floorRim.color = C(b.r, b.g, b.b, I * 0.35 * VFX.fieldIdle);
     const breathe = 0.5 + 0.5 * Math.sin(T * 0.25);
     this.edgeMist.color = C(0.45, 0.45, 0.7, (0.07 + 0.04 * breathe) * A);
     this.edgeMist.rt.rotation = T * 1.5;
     this.backFog.rt.anchoredPosition = v2(Math.sin(T * 0.05) * 140, 300);
-    this.floorLights.forEach((l, i) => (l.color = C(1, 0.55, 0.25, 0.15 + 0.04 * Math.sin(T * 7.3 + i * 2) * Math.sin(T * 3.1 + i))));
+    this.floorLights.forEach((l, i) => (l.color = C(1, 0.55, 0.25, (0.15 + 0.04 * Math.sin(T * 7.3 + i * 2) * Math.sin(T * 3.1 + i)) * emph(A, 0.4))));
     const p = this.flowPath;
     this.flow.forEach((m, i) => {
       const fk = (T * 0.045 + i / this.flow.length) % 1;
@@ -185,6 +195,8 @@ export class FieldCircleView {
   private glow: Img; private base: Img; private runes: Img; private star: Img; private outer: Img; private pulse: Img; private pillar: Img; private pillarCore: Img;
   private motes: Mote[] = [];
   private colA = C(0.55, 0.65, 0.8); private colB = C(0.55, 0.65, 0.8); private tA = C(0.55, 0.65, 0.8); private tB = C(0.55, 0.65, 0.8);
+  /** turn-swap rotation offset (degrees), shared with the floor and the towers' orbit */
+  turnAngle = 0;
   private lv = 0; private targetLevel = 0; private unstable = false; private t = 0; private spin = 0; private pulseT = 1; private pulseColor = WHITE;
   levelNow = 0;
 
@@ -240,19 +252,20 @@ export class FieldCircleView {
     const beat = 0.5 + 0.5 * Math.sin(T * (1.5 + lv));
     this.spin += dt * (3 + lv * 9) * (this.unstable ? 1.8 : 1);
     const mix = lerpColor(this.colA, this.colB, 0.5 + 0.5 * Math.sin(T * 1.3));
-    const act = clamp01(lv / 3), idle = 0.04 * Math.sin(T * 1.1) * VFX.ambient, F = VFX.fieldChange;
+    const act = clamp01(lv / 3), idle = 0.04 * Math.sin(T * 1.1) * VFX.ambient, F = VFX.fieldIdle * (focus.phase === 'field' ? 2 : 1);
     const bright = (c: Color, a: number) => C(Math.min(1, c.r * 0.7 + 0.3), Math.min(1, c.g * 0.7 + 0.3), Math.min(1, c.b * 0.7 + 0.3), clamp01(a * flicker));
     this.glow.color = C(mix.r, mix.g, mix.b, (0.05 + 0.22 * act * act + idle) * flicker * F);
     this.base.color = bright(this.colA, 0.3 + 0.45 * act + 0.12 * beat * act + idle);
-    this.base.rt.rotation = this.spin;
+    const ta = this.turnAngle;
+    this.base.rt.rotation = this.spin + ta;
     this.outer.color = bright(this.colB, (0.06 + 0.34 * act) * F);
-    this.outer.rt.rotation = -this.spin * 0.4;
+    this.outer.rt.rotation = -this.spin * 0.4 + ta;
     this.runes.color = bright(this.colB, 0.1 + 0.2 * l1 + 0.3 * l2 + 0.15 * l3 + idle);
-    this.runes.rt.rotation = -this.spin * 1.3;
+    this.runes.rt.rotation = -this.spin * 1.3 + ta;
     const rs = 0.96 + 0.04 * act;
     this.runes.rt.setScale(rs, rs);
     this.star.color = bright(this.colA, (0.06 + 0.12 * l1 + 0.22 * l2 + 0.45 * l3) * (0.85 + 0.15 * beat));
-    this.star.rt.rotation = this.spin * 0.6;
+    this.star.rt.rotation = this.spin * 0.6 + ta;
     this.pillar.color = C(mix.r, mix.g, mix.b, 0.22 * l3 * (0.7 + 0.3 * beat) * flicker * F);
     this.pillarCore.color = C(1, 1, 1, 0.25 * l3 * (0.6 + 0.4 * beat) * F);
     const count = Math.round(this.motes.length * (0.3 + 0.7 * act));
@@ -368,7 +381,7 @@ export class BackgroundView {
       this.mist = lerpColor(this.mist, this.theme.mist, k);
       this.intensity = lerp(this.intensity, this.theme.intensity, k);
     }
-    const I = this.intensity, A = VFX.ambient;
+    const I = this.intensity, A = VFX.ambient * emph(focus.v.environment, 0.5);
     this.base.color = lerpColor(C(0.035, 0.04, 0.075), this.dark, 0.08 + 0.14 * I);
     this.topWash.color = C(this.dark.r, this.dark.g, this.dark.b, 0.08 + 0.14 * I);
     this.bottomWash.color = C(this.bright.r * 0.6, this.bright.g * 0.6, this.bright.b * 0.6, 0.04 + I * 0.12);

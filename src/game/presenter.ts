@@ -15,6 +15,7 @@ import { C, Color, lerpColor, WHITE } from '../ui/color';
 import { Co, CoOwner, Time, V2, v2 } from '../ui/engine';
 import { SlotState } from '../ui/slotView';
 import { VisualLibrary } from './visuals';
+import { focus } from '../vfx/focus';
 
 const lerpV = (a: V2, b: V2, k: number) => v2(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k);
 
@@ -49,6 +50,7 @@ export class BattlePresenter {
 
   async play(co: Co, r: RoundResult, maxHp: number[]) {
     this.ui.vfx.speed = this.speed;
+    focus.set('reveal');
     const th = THEME;
     this.keepFaceUp.clear();
     for (const s of [PlayerSlot.P1, PlayerSlot.P2]) {
@@ -65,7 +67,7 @@ export class BattlePresenter {
     for (const s of [PlayerSlot.P1, PlayerSlot.P2]) {
       const play = playOf(r, s);
       if (!play || play.isPass || play.extraMp <= 0) continue;
-      this.ui.floating.spawn(this.ui.slot(s).rt, v2(this.ui.facing(s) > 0 ? 250 : -250, 0), `MP 투자 +${play.extraMp} → 필드 +${play.afterHit?.investGain ?? 0}`, MANA_COLOR, 24, 1.6 / this.speed);
+      this.ui.floating.spawn(this.ui.slot(s).rt, v2(0, 175), `MP 투자 +${play.extraMp} → 필드 +${play.afterHit?.investGain ?? 0}`, MANA_COLOR, 24, 1.6 / this.speed);
     }
     await this.wait(co, 0.35);
 
@@ -110,6 +112,10 @@ export class BattlePresenter {
     this.ui.banner.show(title, sub, accent, 1.5 / this.speed);
     await this.wait(co, 0.4);
 
+    // only the tower(s) that actually take damage are emphasised
+    const hitP1 = o.damageToP1 > 0, hitP2 = o.damageToP2 > 0;
+    const homeIsP1 = this.ui.home === PlayerSlot.P1;
+    focus.setImpact(homeIsP1 ? hitP1 : hitP2, homeIsP1 ? hitP2 : hitP1);
     let hp1 = r.hpBefore[0], hp2 = r.hpBefore[1];
     if (o.isSpecial) {
       const light = o.lightSlot, dark = o.darkSlot;
@@ -145,6 +151,7 @@ export class BattlePresenter {
       this.co.start(c => this.ui.vfx.chip(c, text, g.amount >= 0 ? this.lib.elementColor(g.element) : C(0.6, 0.65, 0.72), from, core, 0.8));
     }
     await this.wait(co, 0.75);
+    if (fieldChanged(r)) focus.set('field');
     const newTheme = this.lib.fieldTheme(r.fieldAfter);
     this.ui.renderField(r.fieldAfter, false);
     if (VFX.fieldChange > 0) {

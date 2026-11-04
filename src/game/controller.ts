@@ -16,6 +16,7 @@ import { CardView } from '../ui/cardView';
 import { C, Color, colorize } from '../ui/color';
 import { Co, CoOwner, V2 } from '../ui/engine';
 import { BattlePresenter } from './presenter';
+import { focus } from '../vfx/focus';
 import { roundDetail, fieldDetail } from './detail';
 import { runSelfTest } from './selfTest';
 import { VisualLibrary } from './visuals';
@@ -106,7 +107,7 @@ export class BattleController {
       slotView.card.onClicked.push(() => this.onSlotClicked(s));
       slotView.card.drag = {
         dragLayer: ui.dragLayer,
-        canDrag: () => this.canEdit(s) && this.selection.has(s),
+        canDrag: () => this.canEdit(s) && this.selection.has(s) && !this.ui.swapping,
         dropped: (_c, pos) => this.onSlotCardDropped(s, pos),
       };
     }
@@ -119,10 +120,10 @@ export class BattleController {
     for (const f of this.onSettingsChanged) f(s);
   }
 
-  private setViewer(slot: PlayerSlot) {
+  private setViewer(slot: PlayerSlot, animate = false) {
     if (!this.client.controls(slot)) slot = this.client.controlledSlots[0];
     this.viewer = slot;
-    this.ui.setPerspective(slot);
+    this.ui.swapPerspective(slot, animate);
   }
 
   startMatch(seed: number) {
@@ -223,6 +224,10 @@ export class BattleController {
     const s = this.state;
     if (s.phase === MatchPhase.NotStarted) return;
     const th = THEME;
+    // stage focus (presenter drives it while presenting)
+    if (this.step === Step.Choosing) focus.set('choosing');
+    else if (this.step === Step.Handoff || this.step === Step.Submitting || this.step === Step.WaitingOpponent) focus.set('submitted');
+    else if (this.step === Step.Result || this.step === Step.GameOver) focus.set('result');
     this.ui.topBar.setRound(s.round);
     for (const slot of [PlayerSlot.P1, PlayerSlot.P2]) {
       const p = this.displayedPlayer(s, slot);
@@ -369,8 +374,9 @@ export class BattleController {
     cv.onHoverExit.push(c => { if (this.hovered === c) this.hovered = null; this.renderHint(); });
     cv.drag = {
       dragLayer: this.ui.dragLayer,
-      canDrag: c => this.canEdit(this.active) && !c.faceDown,
+      canDrag: c => this.canEdit(this.active) && !c.faceDown && !this.ui.swapping,
       dragStarted: () => this.ui.slot(this.active).setDropHighlight(true),
+      dragMove: (_c, pos) => this.ui.slot(this.active).setDropHighlight(true, this.ui.slot(this.active).contains(pos)),
       dropped: (c, pos) => this.onHandCardDropped(c, pos),
     };
   }
@@ -595,7 +601,7 @@ export class BattleController {
 
   private beginTurn(slot: PlayerSlot) {
     this.active = slot;
-    if (this.perspectiveFollowsTurn) this.setViewer(slot);
+    if (this.perspectiveFollowsTurn) this.setViewer(slot, true);
     this.step = Step.Choosing;
     this.renderAll();
   }

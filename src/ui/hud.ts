@@ -284,7 +284,7 @@ export class InvestPanel {
     this.rt.sizeDelta = InvestPanel.PanelSize;
     const th = THEME;
     this.pointer = makeImage('Pointer', this.rt, C(1, 1, 1, 1), SF.diamond());
-    this.pointer.rt.place(v2(0, 0.5), v2(-2, 0), v2(26, 26));
+    this.pointer.rt.place(v2(0.5, 1), v2(0, 2), v2(26, 26)); // v8: 패널이 슬롯 아래 → 위쪽 가운데에서 슬롯을 가리킴
     makeFrame('Bg', this.rt, true, 0.97).rt.stretch();
     this.outline = makeImage('Outline', this.rt, C(1, 1, 1, 0.2), SF.softFrame(14, 18), true);
     this.outline.rt.stretch(-18, -18, -18, -18);

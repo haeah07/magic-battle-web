@@ -21,6 +21,8 @@ export interface DragHooks {
   canDrag: (c: CardView) => boolean;
   dragStarted?: (c: CardView) => void;
   dropped: (c: CardView, worldPos: V2) => boolean;
+  /** called while dragging (e.g. highlight the drop zone under the pointer) */
+  dragMove?: (c: CardView, worldPos: V2) => void;
 }
 
 export class CardView {
@@ -338,7 +340,7 @@ export class CardView {
     hit.on('pointerout', () => { this.hovered = false; this.updateTargets(); for (const f of this.onHoverExit) f(this); });
     hit.on('pointerdown', (p: Phaser.Input.Pointer) => { if (this.rt.raycastBlocked) return; downAt = { x: p.x, y: p.y }; activeDrag = { card: this, start: downAt }; });
     hit.on('pointerup', () => {
-      if (downAt && !(this.dragState && this.dragState.dragging) && this.interactable && !this.rt.raycastBlocked) {
+      if (downAt && !justDragged() && !(this.dragState && this.dragState.dragging) && this.interactable && !this.rt.raycastBlocked) {
         this.press = 0;
         for (const f of this.onClicked) f(this);
       }
@@ -366,6 +368,7 @@ export class CardView {
     const local = d.dragLayer.worldToLocal(world);
     this.rt.anchorMin = v2(0.5, 0.5); this.rt.anchorMax = v2(0.5, 0.5);
     this.rt.anchoredPosition = local;
+    d.dragMove?.(this, world);
   }
   endDrag(world: V2) {
     if (!this.dragState) return;
@@ -389,21 +392,41 @@ export class CardView {
 
 // global drag tracking (Unity EventSystem drag threshold ≈ 10px)
 let activeDrag: { card: CardView; start: V2; started?: boolean } | null = null;
-export function installDragTracking(input: Phaser.Input.InputPlugin, toWorld: (p: Phaser.Input.Pointer) => V2) {
-  input.on('pointermove', (p: Phaser.Input.Pointer) => {
-    if (!activeDrag || !p.isDown) return;
-    const w = toWorld(p);
+/**
+ * Drag tracking on the window (DOM pointer events), not on Phaser's scene input:
+ * keeps following the pointer even outside the canvas and does not depend on Phaser's pointer state.
+ * `toGame` converts client coordinates to the 1920×1080 game space.
+ */
+let toGameFn: ((clientX: number, clientY: number) => V2) | null = null;
+/** time of the last finished drag: the pointerup that ends a drag must not also count as a click */
+let lastDragEnd = -1;
+export const justDragged = () => performance.now() - lastDragEnd < 120;
+let domInstalled = false;
+export function installDragTracking(toGame: (clientX: number, clientY: number) => V2) {
+  toGameFn = toGame;
+  if (domInstalled) return;
+  domInstalled = true;
+  const move = (e: PointerEvent) => {
+    if (!activeDrag || !toGameFn) return;
+    if ((e.buttons & 1) === 0 && e.pointerType === 'mouse') { cancel(e); return; }
+    const w = toGameFn(e.clientX, e.clientY);
     if (!activeDrag.started) {
-      if (Math.hypot(p.x - activeDrag.start.x, p.y - activeDrag.start.y) < 10) return;
+      if (Math.hypot(w.x - activeDrag.start.x, w.y - activeDrag.start.y) < 10) return;
       activeDrag.started = activeDrag.card.beginDrag(w);
       if (!activeDrag.started) { activeDrag = null; return; }
     }
     activeDrag.card.moveTo(w);
-  });
-  input.on('pointerup', (p: Phaser.Input.Pointer) => {
-    if (activeDrag && activeDrag.started) activeDrag.card.endDrag(toWorld(p));
+  };
+  const cancel = (e: PointerEvent) => {
+    const d = activeDrag;
     activeDrag = null;
-  });
+    if (d && d.started && toGameFn) { lastDragEnd = performance.now(); d.card.endDrag(toGameFn(e.clientX, e.clientY)); }
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', cancel);
+  window.addEventListener('pointercancel', cancel);
 }
+/** drop any half-started drag (scene restart) */
+export function resetDragTracking() { activeDrag = null; }
 
 void clamp01;

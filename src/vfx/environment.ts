@@ -12,6 +12,7 @@ import { makeImage, rect } from '../ui/factory';
 import { clamp01, lerp, moveTowards } from '../ui/mathf';
 import { SF, SpriteRef } from '../ui/sprites';
 import { FLOOR_TILT } from './arena';
+import { emph, focus } from './focus';
 
 enum Motion { Static, Rise, Fall, Drift, Ripple, Haze, Hover, Sway, Spin }
 
@@ -175,7 +176,7 @@ export class FieldEnvironmentView {
     this.t += dt;
     const k = 1 - Math.exp(-dt * 1.4);
     this.grade.color = lerpColor(this.grade.color, this.gradeTarget, k);
-    const strength = VFX.fieldChange;
+    const strength = VFX.fieldIdle * emph(focus.v.environment, 0.5) * (focus.phase === 'field' ? 1.6 : 1);
     for (const s of this.sets.values()) {
       s.weight = moveTowards(lerp(s.weight, s.target, k), s.target, dt * 0.05);
       const on = s.weight * strength > 0.004;

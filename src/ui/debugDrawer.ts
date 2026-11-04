@@ -51,7 +51,7 @@ const RULE_FIELDS: NumRule[] = [
 ];
 const VFX_LABELS: Record<VfxKey, string> = {
   choosing: '선택 (Glow·hover)', submit: '제출', reveal: '공개', clash: '충돌 · 판정', towerHit: '포탑 피격',
-  fieldChange: '필드 변화 · 환경', ambient: '상시 Ambient', cardAura: '강화/약화 오라', shake: '화면 흔들림',
+  fieldChange: '필드 변화 순간', fieldIdle: '평상시 필드 · 환경', ambient: '상시 Ambient', cardAura: '강화/약화 오라', shake: '화면 흔들림',
 };
 
 export interface DrawerHooks {

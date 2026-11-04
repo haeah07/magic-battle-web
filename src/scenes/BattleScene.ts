@@ -10,7 +10,7 @@ import { BattleController, newSeed } from '../game/controller';
 import { VisualLibrary } from '../game/visuals';
 import { IMatchClient, LocalMatchClient, RemoteBotOpponent } from '../net/client';
 import { BattleScreen } from '../ui/battleScreen';
-import { installDragTracking } from '../ui/cardView';
+import { installDragTracking, resetDragTracking } from '../ui/cardView';
 import { applyVfx, DebugDrawer, loadSettings, MatchMode, saveSettings, StoredSettings } from '../ui/debugDrawer';
 import { frameLayout, initEngine, RT, tick } from '../ui/engine';
 
@@ -62,7 +62,12 @@ export class BattleScene extends Phaser.Scene {
     });
     this.controller.onEditValues.push(() => { this.screenUi.debug.hide(); drawer!.open(); });
 
-    installDragTracking(this.input, p => ({ x: p.x, y: p.y }));
+    resetDragTracking();
+    const canvas = this.game.canvas;
+    installDragTracking((cx, cy) => {
+      const r = canvas.getBoundingClientRect();
+      return { x: (cx - r.left) * REFERENCE.width / r.width, y: (cy - r.top) * REFERENCE.height / r.height };
+    });
     frameLayout();
     // test/automation hook: world position of the first active RectTransform with this name
     const find = (name: string, r: RT = root): RT | null => {

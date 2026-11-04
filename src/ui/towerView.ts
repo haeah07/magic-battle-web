@@ -146,6 +146,7 @@ export class TowerView {
     const destroyed = stage >= destroyedIndex;
     const accent = this.visual.accentColor;
     const a = destroyed ? 0 : [0.3, 0.26, 0.18, 0.12][Math.max(0, Math.min(3, stage))];
+    this.coreA = a;
     this.coreGlow.color = C(accent.r, accent.g, accent.b, a);
     const th = THEME;
     const stageColor = stage === 0 ? th.positiveColor : destroyed ? C(0.6, 0.6, 0.6) : lerpColor(th.accentColor, th.negativeColor, severity);
@@ -203,6 +204,10 @@ export class TowerView {
   }
 
   private async hitRoutine(co: Co) {
+    this.hitting = true;
+    try { await this.hitBody(co); } finally { this.hitting = false; }
+  }
+  private async hitBody(co: Co) {
     const K = VFX.towerHit;
     const base = v2(0, PLATE_H - 22);
     const dirs = this.debris.map((_, i) => {
@@ -238,7 +243,15 @@ export class TowerView {
     for (const d of this.debris) d.color = C(0, 0, 0, 0);
   }
 
+  /** stage focus 0..1 (set by BattleScreen): core light and art brightness when the tower is not the focus */
+  emphasis = 1;
+  private coreA = 0.3;
+  private hitting = false;
   private update(dt: number) {
+    const E = this.emphasis;
+    const ca = this.coreGlow.color;
+    this.coreGlow.color = C(ca.r, ca.g, ca.b, this.coreA * (0.25 + 0.75 * E));
+    if (!this.hitting) this.sprite.color = lerpColor(C(0.7, 0.72, 0.78), WHITE, E);
     this.t += dt;
     if (this.displayHp >= 0 && Math.abs(this.displayHp - this.targetHp) > 0.01) this.displayHp = moveTowards(this.displayHp, this.targetHp, dt * 24);
     if (this.trailDelay > 0) this.trailDelay -= dt;

@@ -3,7 +3,7 @@ import { CARD } from '../config/layout';
 import { VFX } from '../config/vfx';
 import { CombatStats, CardDef, PlayerSlot, slotLabel } from '../core/types';
 import { VisualLibrary } from '../game/visuals';
-import { CardView } from './cardView';
+import { CardView, justDragged } from './cardView';
 import { C, Color, WHITE } from './color';
 import { addUpdate, Img, RT, Txt, V2, v2 } from './engine';
 import { makeImage, makeText, rect, rtOf } from './factory';
@@ -46,7 +46,10 @@ export class SlotView {
     this.glow.rt.stretch(-28, -28, -28, -28);
     this.plate = makeImage('Plate', this.rt, C(0, 0, 0, 0), SF.roundedRect(22), true, true);
     this.plate.rt.stretch();
-    this.plate.on('pointerup', () => { if (!this.rt.raycastBlocked) for (const f of this.onClicked) f(this); });
+    let plateDown = false;
+    this.plate.on('pointerdown', () => { plateDown = true; });
+    this.plate.on('pointerout', () => { plateDown = false; });
+    this.plate.on('pointerup', () => { const ok = plateDown && !justDragged(); plateDown = false; if (ok && !this.rt.raycastBlocked) for (const f of this.onClicked) f(this); });
     this.outline = makeImage('Outline', this.rt, C(pc.r, pc.g, pc.b, 0), SF.roundedOutline(22, 2), true);
     this.outline.rt.stretch();
     this.caption = makeText('Caption', this.rt, slotLabel(slot), 22, pc, 'MiddleCenter', true).shadowed();
@@ -133,25 +136,30 @@ export class SlotView {
     this.card.rt.anchoredPosition = this.flyOffset;
   }
   playLock() { this.lockT = 0; }
-  setDropHighlight(on: boolean) { this.dropHighlight = on; }
+  private dropHover = false;
+  /** drag in progress: the slot shows it is a valid drop zone; `hover` = pointer is over it */
+  setDropHighlight(on: boolean, hover = false) { this.dropHighlight = on; this.dropHover = on && hover; }
   contains(world: V2, padding = 40) { return this.rt.containsWorld(world, padding); }
 
+  /** stage focus 0..1 (set by BattleScreen): dims the summon circle and floor glow when this slot is not the focus */
+  emphasis = 1;
   private update(dt: number) {
     const pc = this.lib.playerColor(this.slot);
+    const E = 0.3 + 0.7 * this.emphasis;
     const K = VFX.choosing;
     this.pulse += dt;
-    const a = this.dropHighlight ? 0.6 : this.active && this.card.rt.active ? 0.14 + 0.08 * Math.sin(this.pulse * 3) : 0;
+    const a = this.dropHover ? 1 : this.dropHighlight ? 0.45 + 0.15 * Math.sin(this.pulse * 6) : this.active && this.card.rt.active ? 0.14 + 0.08 * Math.sin(this.pulse * 3) : 0;
     this.glow.color = C(pc.r, pc.g, pc.b, lerp(this.glow.color.a, a * K, 0.15));
-    this.outline.color = C(pc.r, pc.g, pc.b, this.dropHighlight ? 0.9 : 0);
+    this.outline.color = C(pc.r, pc.g, pc.b, this.dropHover ? 1 : this.dropHighlight ? 0.55 : 0);
     const hasCard = this.card.rt.active;
     const ca = hasCard ? 0.55 : this.active ? 0.6 + 0.2 * Math.sin(this.pulse * 3) : 0.3;
-    this.circle.color = C(pc.r, pc.g, pc.b, lerp(this.circle.color.a, ca, 0.12));
+    this.circle.color = C(pc.r, pc.g, pc.b, lerp(this.circle.color.a, ca * E, 0.12));
     this.circle.rt.rotation = this.pulse * (this.active ? 14 : 5);
     const lockK = VFX.submit;
-    this.floorGlow.color = C(pc.r, pc.g, pc.b, (hasCard ? 0.32 : this.active ? 0.28 : 0.14) + (this.lockT < 1 ? 0.4 * (1 - this.lockT) * lockK : 0));
+    this.floorGlow.color = C(pc.r, pc.g, pc.b, (hasCard ? 0.32 : this.active ? 0.28 : 0.14) * E + (this.lockT < 1 ? 0.4 * (1 - this.lockT) * lockK : 0));
     this.cardShadow.color = C(0, 0, 0, lerp(this.cardShadow.color.a, hasCard ? 0.5 : 0, 0.2));
     this.beam.color = C(pc.r, pc.g, pc.b, this.lockT < 1 ? 0.55 * Math.sin(this.lockT * Math.PI) * lockK : this.active && !hasCard ? (0.06 + 0.04 * Math.sin(this.pulse * 3)) * K : 0);
-    this.circleInner.color = C(pc.r, pc.g, pc.b, lerp(this.circleInner.color.a, ca * 0.6, 0.12));
+    this.circleInner.color = C(pc.r, pc.g, pc.b, lerp(this.circleInner.color.a, ca * 0.6 * E, 0.12));
     this.circleInner.rt.rotation = -this.pulse * 9;
     if (this.flyT < 1) {
       this.flyT = Math.min(1, this.flyT + dt / 0.22);
