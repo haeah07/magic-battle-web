@@ -1,0 +1,827 @@
+{
+"vgradient": {
+"file": "vgradient.png",
+"w": 1,
+"h": 64,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"blob256": {
+"file": "blob256.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"vignette256": {
+"file": "vignette256.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"glow64": {
+"file": "glow64.png",
+"w": 64,
+"h": 64,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"ring512_0.006": {
+"file": "ring512_0_006.png",
+"w": 512,
+"h": 512,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"ring512_0.004": {
+"file": "ring512_0_004.png",
+"w": 512,
+"h": 512,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"ring256_0.16": {
+"file": "ring256_0_16.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"hband": {
+"file": "hband.png",
+"w": 256,
+"h": 32,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"glow128": {
+"file": "glow128.png",
+"w": 128,
+"h": 128,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"flame": {
+"file": "flame.png",
+"w": 48,
+"h": 96,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"dashring36": {
+"file": "dashring36.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"ring256_0.03": {
+"file": "ring256_0_03.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"lightshaft": {
+"file": "lightshaft.png",
+"w": 64,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"crack": {
+"file": "crack.png",
+"w": 24,
+"h": 96,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"waveband": {
+"file": "waveband.png",
+"w": 256,
+"h": 48,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"ring128_0.05": {
+"file": "ring128_0_05.png",
+"w": 128,
+"h": 128,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"drop": {
+"file": "drop.png",
+"w": 40,
+"h": 56,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"vine": {
+"file": "vine.png",
+"w": 64,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"leaf": {
+"file": "leaf.png",
+"w": 48,
+"h": 64,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"crystal": {
+"file": "crystal.png",
+"w": 40,
+"h": 96,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"diamond": {
+"file": "diamond.png",
+"w": 64,
+"h": 64,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"shard": {
+"file": "shard.png",
+"w": 24,
+"h": 64,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"glow256": {
+"file": "glow256.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"rounded10": {
+"file": "rounded10.png",
+"w": 28,
+"h": 28,
+"border": [
+12,
+12,
+12,
+12
+]
+},
+"rounded12": {
+"file": "rounded12.png",
+"w": 32,
+"h": 32,
+"border": [
+14,
+14,
+14,
+14
+]
+},
+"rounded8": {
+"file": "rounded8.png",
+"w": 24,
+"h": 24,
+"border": [
+10,
+10,
+10,
+10
+]
+},
+"rounded6": {
+"file": "rounded6.png",
+"w": 20,
+"h": 20,
+"border": [
+8,
+8,
+8,
+8
+]
+},
+"rounded4": {
+"file": "rounded4.png",
+"w": 16,
+"h": 16,
+"border": [
+6,
+6,
+6,
+6
+]
+},
+"rounded3": {
+"file": "rounded3.png",
+"w": 14,
+"h": 14,
+"border": [
+5,
+5,
+5,
+5
+]
+},
+"circle128": {
+"file": "circle128.png",
+"w": 128,
+"h": 128,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"goldframeTrue": {
+"file": "goldframeTrue.png",
+"w": 72,
+"h": 72,
+"border": [
+26,
+26,
+26,
+26
+]
+},
+"softframe14_16": {
+"file": "softframe14_16.png",
+"w": 68,
+"h": 68,
+"border": [
+32,
+32,
+32,
+32
+]
+},
+"outline12_2": {
+"file": "outline12_2.png",
+"w": 32,
+"h": 32,
+"border": [
+14,
+14,
+14,
+14
+]
+},
+"dashring16": {
+"file": "dashring16.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"softframe22_40": {
+"file": "softframe22_40.png",
+"w": 132,
+"h": 132,
+"border": [
+64,
+64,
+64,
+64
+]
+},
+"rounded22": {
+"file": "rounded22.png",
+"w": 52,
+"h": 52,
+"border": [
+24,
+24,
+24,
+24
+]
+},
+"outline22_2": {
+"file": "outline22_2.png",
+"w": 52,
+"h": 52,
+"border": [
+24,
+24,
+24,
+24
+]
+},
+"softframe18_24": {
+"file": "softframe18_24.png",
+"w": 92,
+"h": 92,
+"border": [
+44,
+44,
+44,
+44
+]
+},
+"beam": {
+"file": "beam.png",
+"w": 32,
+"h": 128,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"dashring18": {
+"file": "dashring18.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"dashring10": {
+"file": "dashring10.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"rounded18": {
+"file": "rounded18.png",
+"w": 44,
+"h": 44,
+"border": [
+20,
+20,
+20,
+20
+]
+},
+"outline18_3": {
+"file": "outline18_3.png",
+"w": 44,
+"h": 44,
+"border": [
+20,
+20,
+20,
+20
+]
+},
+"circle64": {
+"file": "circle64.png",
+"w": 64,
+"h": 64,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"softframe18_30": {
+"file": "softframe18_30.png",
+"w": 104,
+"h": 104,
+"border": [
+50,
+50,
+50,
+50
+]
+},
+"softframe18_10": {
+"file": "softframe18_10.png",
+"w": 64,
+"h": 64,
+"border": [
+30,
+30,
+30,
+30
+]
+},
+"softframe22_26": {
+"file": "softframe22_26.png",
+"w": 104,
+"h": 104,
+"border": [
+50,
+50,
+50,
+50
+]
+},
+"rounded14": {
+"file": "rounded14.png",
+"w": 36,
+"h": 36,
+"border": [
+16,
+16,
+16,
+16
+]
+},
+"iconsocket": {
+"file": "iconsocket.png",
+"w": 96,
+"h": 96,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"softframe14_22": {
+"file": "softframe14_22.png",
+"w": 80,
+"h": 80,
+"border": [
+38,
+38,
+38,
+38
+]
+},
+"softframe14_18": {
+"file": "softframe14_18.png",
+"w": 72,
+"h": 72,
+"border": [
+34,
+34,
+34,
+34
+]
+},
+"dashring8": {
+"file": "dashring8.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"softframe20_30": {
+"file": "softframe20_30.png",
+"w": 108,
+"h": 108,
+"border": [
+52,
+52,
+52,
+52
+]
+},
+"actionbtn": {
+"file": "actionbtn.png",
+"w": 160,
+"h": 64,
+"border": [
+34,
+20,
+34,
+20
+]
+},
+"rounded26": {
+"file": "rounded26.png",
+"w": 60,
+"h": 60,
+"border": [
+28,
+28,
+28,
+28
+]
+},
+"outline26_3": {
+"file": "outline26_3.png",
+"w": 60,
+"h": 60,
+"border": [
+28,
+28,
+28,
+28
+]
+},
+"outline10_3": {
+"file": "outline10_3.png",
+"w": 28,
+"h": 28,
+"border": [
+12,
+12,
+12,
+12
+]
+},
+"ring256_0.04": {
+"file": "ring256_0_04.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"rounded16": {
+"file": "rounded16.png",
+"w": 40,
+"h": 40,
+"border": [
+18,
+18,
+18,
+18
+]
+},
+"outline16_3": {
+"file": "outline16_3.png",
+"w": 40,
+"h": 40,
+"border": [
+18,
+18,
+18,
+18
+]
+},
+"ring256_0.02": {
+"file": "ring256_0_02.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"ring256_0.05": {
+"file": "ring256_0_05.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"ring256_0.08": {
+"file": "ring256_0_08.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"goldframeFalse": {
+"file": "goldframeFalse.png",
+"w": 72,
+"h": 72,
+"border": [
+26,
+26,
+26,
+26
+]
+},
+"runecircle1": {
+"file": "runecircle1.png",
+"w": 384,
+"h": 384,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"runecircle2": {
+"file": "runecircle2.png",
+"w": 384,
+"h": 384,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"runecircle3": {
+"file": "runecircle3.png",
+"w": 384,
+"h": 384,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"stonefloor": {
+"file": "stonefloor.png",
+"w": 512,
+"h": 512,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"column": {
+"file": "column.png",
+"w": 64,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"blob64": {
+"file": "blob64.png",
+"w": 64,
+"h": 64,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"blob128": {
+"file": "blob128.png",
+"w": 128,
+"h": 128,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"circle256": {
+"file": "circle256.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"rounded20": {
+"file": "rounded20.png",
+"w": 48,
+"h": 48,
+"border": [
+22,
+22,
+22,
+22
+]
+},
+"dashring12": {
+"file": "dashring12.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+},
+"dashring24": {
+"file": "dashring24.png",
+"w": 256,
+"h": 256,
+"border": [
+0,
+0,
+0,
+0
+]
+}
+}
