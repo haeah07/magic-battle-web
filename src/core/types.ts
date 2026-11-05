@@ -11,26 +11,27 @@ export const slotLabel = (s: PlayerSlot): string => (s === PlayerSlot.P1 ? 'P1' 
 export const FIELD_ORDER: readonly Element[] = [Element.Water, Element.Fire, Element.Nature, Element.Ice, Element.Rock, Element.Light, Element.Dark];
 export const BASIC_ELEMENTS: readonly Element[] = [Element.Water, Element.Fire, Element.Nature, Element.Ice, Element.Rock];
 export const PASS_CARD_ID = '__pass';
+/** 실험: 충전 행동 (카드 대신 MP +2, 공격하지 않음) */
+export const CHARGE_CARD_ID = '__charge';
 
 // ---------------------------------------------------------------- StatDelta
-export interface StatDelta { atk: number; def: number; pierce: number; gain: number; cost: number; investGain: number; investMax: number }
+/** v9: DEF/관통 제거 — 공격이 성공하면 ATK 가 그대로 피해 */
+export interface StatDelta { atk: number; gain: number; cost: number; investGain: number; investMax: number }
 
-export const sd = (p: Partial<StatDelta> = {}): StatDelta => ({ atk: 0, def: 0, pierce: 0, gain: 0, cost: 0, investGain: 0, investMax: 0, ...p });
+export const sd = (p: Partial<StatDelta> = {}): StatDelta => ({ atk: 0, gain: 0, cost: 0, investGain: 0, investMax: 0, ...p });
 export const SD_ZERO: Readonly<StatDelta> = sd();
-export const sdIsZero = (d: StatDelta) => !d.atk && !d.def && !d.pierce && !d.gain && !d.cost && !d.investGain && !d.investMax;
+export const sdIsZero = (d: StatDelta) => !d.atk && !d.gain && !d.cost && !d.investGain && !d.investMax;
 export const sdScaled = (d: StatDelta, f: number): StatDelta =>
-  sd({ atk: d.atk * f, def: d.def * f, pierce: d.pierce * f, gain: d.gain * f, cost: d.cost * f, investGain: d.investGain * f, investMax: d.investMax * f });
+  sd({ atk: d.atk * f, gain: d.gain * f, cost: d.cost * f, investGain: d.investGain * f, investMax: d.investMax * f });
 export const sdAdd = (a: StatDelta, b: StatDelta): StatDelta =>
-  sd({ atk: a.atk + b.atk, def: a.def + b.def, pierce: a.pierce + b.pierce, gain: a.gain + b.gain, cost: a.cost + b.cost, investGain: a.investGain + b.investGain, investMax: a.investMax + b.investMax });
-/** C#: atk + def + pierce + gain/2 - cost + investGain/2 + investMax */
-export const sdPowerScore = (d: StatDelta) => d.atk + d.def + d.pierce + d.gain / 2 - d.cost + d.investGain / 2 + d.investMax;
+  sd({ atk: a.atk + b.atk, gain: a.gain + b.gain, cost: a.cost + b.cost, investGain: a.investGain + b.investGain, investMax: a.investMax + b.investMax });
+/** atk + gain/2 - cost + investGain/2 + investMax */
+export const sdPowerScore = (d: StatDelta) => d.atk + d.gain / 2 - d.cost + d.investGain / 2 + d.investMax;
 
 const signed = (v: number) => (v > 0 ? '+' + v : '-' + -v);
 export function sdDescribe(d: StatDelta): string {
   const parts: string[] = [];
   if (d.atk) parts.push(`ATK ${signed(d.atk)}`);
-  if (d.def) parts.push(`DEF ${signed(d.def)}`);
-  if (d.pierce) parts.push(`관통 ${signed(d.pierce)}`);
   if (d.gain) parts.push(`필드 누적 ${signed(d.gain)}`);
   if (d.cost) parts.push(`MP 코스트 ${signed(d.cost)}`);
   if (d.investGain) parts.push(`투자 효율 ${signed(d.investGain)}/MP`);
@@ -46,7 +47,7 @@ export const mod = (kind: ModifierKind, label: string, delta: StatDelta): Modifi
 export const modIsNegative = (m: Modifier) => sdPowerScore(m.delta) < 0;
 export const modFromField = (m: Modifier) => m.kind === ModifierKind.Field || m.kind === ModifierKind.FieldTrait;
 
-export interface CombatStats { atk: number; def: number; pierce: number; gain: number; mods: Modifier[] }
+export interface CombatStats { atk: number; gain: number; mods: Modifier[] }
 
 // ---------------------------------------------------------------- definitions
 export interface ElementIdentity {
@@ -75,7 +76,7 @@ export interface ElementDef {
   identity: ElementIdentity;
 }
 
-export enum TraitCondition { None = 0, Always = 1, OpponentElementIs = 2, OpponentBaseDefAtMost = 3, OpponentBaseDefAtLeast = 4, FieldLevelAtLeast = 5 }
+export enum TraitCondition { None = 0, Always = 1, OpponentElementIs = 2, FieldLevelAtLeast = 5 }
 
 export interface TraitDef {
   id: string;
@@ -118,7 +119,6 @@ export interface CardDef {
   element: Element;
   baseCost: number;
   atk: number;
-  def: number;
   baseFieldGain: number;
   traits: TraitDef[];
   invest: InvestDef;
@@ -148,9 +148,11 @@ export interface TestRuleOptions {
   elementIdentity: boolean;
   /** 실험 기능: 역할 카드 (기본 OFF) */
   roleCards: boolean;
+  /** 실험: 충전 행동 + 고코스트 테스트 카드 (웹 플레이테스트 기본 ON) */
+  chargeExperiment?: boolean;
 }
 export const cloneOptions = (o: TestRuleOptions): TestRuleOptions => ({ ...o });
-export const v6Baseline = (): TestRuleOptions => ({ matchupStatBonus: false, resonance: true, hybrid: true, unstable: true, suppression: false, testCards: false, elementIdentity: false, roleCards: false });
+export const v6Baseline = (): TestRuleOptions => ({ matchupStatBonus: false, resonance: true, hybrid: true, unstable: true, suppression: false, testCards: false, elementIdentity: false, roleCards: false, chargeExperiment: false });
 
 /** Port of RuleSet. All tunable numbers live in src/data/rules.ts. */
 export interface RuleSet {
@@ -188,6 +190,10 @@ export interface RuleSet {
   investGainPerMp: number;
   investMaxExtra: number;
   minCardCost: number;
+  /** 충전 시 추가 MP */
+  chargeMp: number;
+  /** 손패 최대 장수 (가득 차면 드로우를 건너뜀) */
+  maxHand: number;
   defaultOptions: TestRuleOptions;
 }
 

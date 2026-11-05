@@ -1,5 +1,5 @@
 // Port of GameContent (Core/Definitions.cs). Built from the editable data files in src/data.
-import { CardDef, Element, ElementDef, FIELD_ORDER, HybridDef, hybridMatches, PASS_CARD_ID, RuleSet, CardRole, sd } from './types';
+import { CardDef, CHARGE_CARD_ID, Element, ElementDef, FIELD_ORDER, HybridDef, hybridMatches, PASS_CARD_ID, RuleSet, CardRole, sd } from './types';
 
 export class GameContent {
   readonly rules: RuleSet;
@@ -7,9 +7,16 @@ export class GameContent {
   readonly cards: CardDef[] = [];
   readonly hybrids: HybridDef[] = [];
   readonly passCard: CardDef = {
-    id: PASS_CARD_ID, name: '턴 넘김', element: Element.None, baseCost: 0, atk: 0, def: 0, baseFieldGain: 0, traits: [],
+    id: PASS_CARD_ID, name: '턴 넘김', element: Element.None, baseCost: 0, atk: 0, baseFieldGain: 0, traits: [],
     invest: { allowed: true, useRuleDefaults: true, gainPerMp: 5, maxExtraMp: 2 }, role: CardRole.Standard,
     isRoleSample: false, isTest: false, isPass: true, note: '',
+  };
+
+  /** 실험 '충전': 카드 대신 내는 행동. 공격·필드 누적 없음, 해결 후 MP +chargeMp */
+  readonly chargeCard: CardDef = {
+    id: CHARGE_CARD_ID, name: '충전', element: Element.None, baseCost: 0, atk: 0, baseFieldGain: 0, traits: [],
+    invest: { allowed: false, useRuleDefaults: false, gainPerMp: 0, maxExtraMp: 0 }, role: CardRole.Standard,
+    isRoleSample: false, isTest: false, isPass: true, note: '이번 턴 공격하지 않습니다',
   };
 
   constructor(rules: RuleSet) {
@@ -28,6 +35,7 @@ export class GameContent {
 
   getCard(id: string | null | undefined): CardDef | undefined {
     if (id === PASS_CARD_ID) return this.passCard;
+    if (id === CHARGE_CARD_ID) return this.chargeCard;
     return this.cards.find(c => c.id === id);
   }
 

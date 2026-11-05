@@ -13,9 +13,9 @@ const C = (s: string, c: Color) => colorize(s, c);
 const FAIL = col(0.75, 0.7, 0.95);
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-function formula(a: CombatStats, b: CombatStats, dmg: number) {
-  const def = a.pierce > 0 ? `(DEF ${b.def} - 관통 ${a.pierce})` : `DEF ${b.def}`;
-  return `ATK ${a.atk} - ${def} = <b>${dmg}</b>`;
+/** v9: DEF 없음 — 공격이 성공하면 ATK 가 그대로 피해 */
+function formula(a: CombatStats, _b: CombatStats, dmg: number) {
+  return `ATK ${a.atk} = <b>${dmg}</b>`;
 }
 
 export function roundDetail(lib: VisualLibrary, r: RoundResult | null): string {
@@ -31,7 +31,7 @@ export function roundDetail(lib: VisualLibrary, r: RoundResult | null): string {
     const el = def.isPass ? '—' : lib.elementLabel(def.element);
     const inv = p.extraMp > 0 ? C(`  (투자 +${p.extraMp} → 필드 +${p.afterHit?.investGain ?? 0})`, MANA_COLOR) : '';
     L.push(`${C('<b>' + slotLabel(s) + '</b>', pc)}  ${def.name} (${el})  MP ${p.mpSpent}${inv}`);
-    L.push(`   기본 ATK ${def.atk} / DEF ${def.def} / 필드 ${def.baseFieldGain}  →  최종 ATK ${p.stats.atk} / DEF ${p.stats.def} / 관통 ${p.stats.pierce} / 필드 ${p.stats.gain}`);
+    L.push(`   기본 ATK ${def.atk} / 필드 ${def.baseFieldGain}  →  최종 ATK ${p.stats.atk} / 필드 ${p.stats.gain}`);
     for (const m of p.stats.mods) L.push('   ' + C(`· ${m.label}  ${sdDescribe(m.delta)}`, modIsNegative(m) ? th.negativeColor : th.positiveColor));
     if (p.stats.mods.length === 0) L.push('   ' + C('· 보정 없음', th.mutedTextColor));
   }

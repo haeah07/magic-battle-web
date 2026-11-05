@@ -1,7 +1,7 @@
 // ============================================================================
 //  속성 데이터 (Unity ElementData / DefaultContent 와 동일)
 //  beats: 이 속성이 이기는 속성 (상성 승리 = 상대 공격 실패)
-//  resonance: 필드 Lv 1당 이 속성 카드에 주는 보정 (공명)
+//  resonance: 필드 Lv 1당 이 속성 카드에 주는 보정 (공명) — v9: DEF 제거로 물=필드 누적, 얼음·바위=ATK
 //  identity: 실험 기능 '속성 성향' (기본 OFF)
 //  visual: 색상/배경/입자/카드 오라 — 화면 표현만 바꿉니다.
 // ============================================================================
@@ -27,7 +27,7 @@ export const ELEMENTS: ElementData[] = [
   {
     element: Element.Water, label: "물",
     beats: [Element.Fire, Element.Rock],
-    isFieldElement: true, hasResonance: true, resonance: sd({ def: 1 }),
+    isFieldElement: true, hasResonance: true, resonance: sd({ gain: 2 }),
     fieldName: "수류 필드", fieldBadge: "TIDE", fieldDesc: "물기가 전장을 적시고 빗줄기가 흐릅니다.",
     identity: {
       summary: "필드 조절형 · 사용 시 가장 강한 다른 속성 필드 -6 · 투자 효율 +2/MP",
@@ -66,7 +66,7 @@ export const ELEMENTS: ElementData[] = [
   {
     element: Element.Ice, label: "얼음",
     beats: [Element.Water, Element.Nature],
-    isFieldElement: true, hasResonance: true, resonance: sd({ def: 1 }),
+    isFieldElement: true, hasResonance: true, resonance: sd({ atk: 1 }),
     fieldName: "빙결 필드", fieldBadge: "FROST", fieldDesc: "차가운 안개와 서리가 전장을 감쌉니다.",
     identity: {
       summary: "방해형 · 공격 성공 시 상대 다음 MP 회복 -1",
@@ -79,7 +79,7 @@ export const ELEMENTS: ElementData[] = [
   {
     element: Element.Rock, label: "바위",
     beats: [Element.Fire, Element.Ice],
-    isFieldElement: true, hasResonance: true, resonance: sd({ def: 1 }),
+    isFieldElement: true, hasResonance: true, resonance: sd({ atk: 1 }),
     fieldName: "암석 필드", fieldBadge: "STONE", fieldDesc: "흙먼지와 바위 파편이 낮게 깔립니다.",
     identity: {
       summary: "안정 화력형 · 필드 약화 효과를 받지 않음",
@@ -142,14 +142,14 @@ export interface HybridData extends HybridDef { visual: { themeDark: RGB; themeB
 export const HYBRIDS: HybridData[] = [
   {
     id: "steam", a: Element.Fire, b: Element.Water, name: "증기 지대", badge: "STEAM",
-    description: "불과 물이 부딪혀 뜨거운 증기가 피어오릅니다.", effectText: "모든 카드 DEF -1",
-    target: HybridTarget.All, targetElements: [], effect: sd({ def: -1 }),
+    description: "불과 물이 부딪혀 뜨거운 증기가 피어오릅니다.", effectText: "모든 카드 ATK +1",
+    target: HybridTarget.All, targetElements: [], effect: sd({ atk: 1 }),
     visual: { themeDark: [0.1686, 0.1882, 0.2118], themeBright: [0.8471, 0.8667, 0.8902], mist: [0.9098, 0.9294, 0.949] },
   },
   {
     id: "thaw", a: Element.Fire, b: Element.Ice, name: "해빙 증기", badge: "THAW",
-    description: "얼음이 녹아내리며 증기가 피어오릅니다.", effectText: "모든 카드 DEF -1",
-    target: HybridTarget.All, targetElements: [], effect: sd({ def: -1 }),
+    description: "얼음이 녹아내리며 증기가 피어오릅니다.", effectText: "모든 카드 ATK +1",
+    target: HybridTarget.All, targetElements: [], effect: sd({ atk: 1 }),
     visual: { themeDark: [0.1686, 0.1882, 0.2118], themeBright: [0.8471, 0.902, 0.9333], mist: [0.9333, 0.9569, 0.9725] },
   },
   {
@@ -160,14 +160,14 @@ export const HYBRIDS: HybridData[] = [
   },
   {
     id: "overgrowth", a: Element.Nature, b: Element.Water, name: "범람 수림", badge: "OVERGROWTH",
-    description: "물을 머금은 숲이 전장을 뒤덮습니다.", effectText: "물·풀 카드 DEF +1",
-    target: HybridTarget.List, targetElements: [Element.Nature, Element.Water], effect: sd({ def: 1 }),
+    description: "물을 머금은 숲이 전장을 뒤덮습니다.", effectText: "물·풀 카드 필드 누적 +2",
+    target: HybridTarget.List, targetElements: [Element.Nature, Element.Water], effect: sd({ gain: 2 }),
     visual: { themeDark: [0.0588, 0.2, 0.2], themeBright: [0.2471, 0.7608, 0.6588], mist: [0.6588, 0.9255, 0.8745] },
   },
   {
     id: "molten", a: Element.Fire, b: Element.Rock, name: "용융 대지", badge: "MOLTEN",
-    description: "녹아내린 바위가 붉게 끓어오릅니다.", effectText: "불·바위 카드 관통 +1",
-    target: HybridTarget.List, targetElements: [Element.Rock, Element.Fire], effect: sd({ pierce: 1 }),
+    description: "녹아내린 바위가 붉게 끓어오릅니다.", effectText: "불·바위 카드 ATK +1",
+    target: HybridTarget.List, targetElements: [Element.Rock, Element.Fire], effect: sd({ atk: 1 }),
     visual: { themeDark: [0.2392, 0.0784, 0.0471], themeBright: [0.8784, 0.3451, 0.1647], mist: [0.9098, 0.6275, 0.4784] },
   },
 ];

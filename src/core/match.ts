@@ -5,7 +5,7 @@ import { terms } from './combat';
 import { GameContent } from './content';
 import { FieldGain, FieldModeType, FieldState } from './field';
 import { DeterministicRandom } from './random';
-import { cloneOptions, CombatStats, Element, PASS_CARD_ID, PlayerSlot, TestRuleOptions } from './types';
+import { cloneOptions, CHARGE_CARD_ID, CombatStats, Element, PASS_CARD_ID, PlayerSlot, TestRuleOptions } from './types';
 
 // ---------------------------------------------------------------- player
 export interface CardInstance { uid: string; cardId: string }
@@ -43,15 +43,19 @@ export interface PrivatePlayerView {
   slot: PlayerSlot; mp: number; canAffordAny: boolean; hand: CardInstance[]; deckCount: number; discardCount: number;
   submitted: boolean; submittedCardUid: string | null; submittedCardId: string | null; submittedPass: boolean;
   submittedExtraMp: number; submittedTotalCost: number;
+  /** 실험 '충전' */
+  submittedCharge: boolean;
 }
 
 // ---------------------------------------------------------------- messages
 export enum MatchPhase { NotStarted = 0, WaitingForSubmissions = 1, RoundResolved = 2, GameOver = 3 }
 export enum MatchOutcome { InProgress = 0, P1Wins = 1, P2Wins = 2, Draw = 3 }
 
-export interface SubmitCardCommand { slot: PlayerSlot; cardUid: string | null; pass: boolean; extraMp: number }
+export interface SubmitCardCommand { slot: PlayerSlot; cardUid: string | null; pass: boolean; extraMp: number; charge?: boolean }
 export const cardCommand = (slot: PlayerSlot, uid: string, extraMp = 0): SubmitCardCommand => ({ slot, cardUid: uid, pass: false, extraMp });
 export const passCommand = (slot: PlayerSlot): SubmitCardCommand => ({ slot, cardUid: null, pass: true, extraMp: 0 });
+/** 실험 '충전': 카드 대신 MP +2 (공격하지 않음, 카드 소비 없음) */
+export const chargeCommand = (slot: PlayerSlot): SubmitCardCommand => ({ slot, cardUid: null, pass: true, extraMp: 0, charge: true });
 
 export enum CommandError { None = 0, WrongPhase, AlreadySubmitted, CardNotInHand, UnknownCard, NotEnoughMp, PassNotAllowed, InvestmentNotAllowed, InvalidInvestment }
 export interface CommandResult { ok: boolean; error: CommandError; message: string }
@@ -60,6 +64,8 @@ const fail = (error: CommandError, message: string): CommandResult => ({ ok: fal
 
 export interface RevealedPlay {
   slot: PlayerSlot; cardUid: string | null; cardId: string; isPass: boolean; extraMp: number; mpSpent: number;
+  /** 실험 '충전': 이번 라운드 충전으로 얻은 MP (0 = 충전 아님) */
+  isCharge?: boolean; chargeMp?: number;
   stats: CombatStats; afterHit: AfterHitResult;
 }
 
@@ -98,7 +104,7 @@ export interface PublicMatchState {
 export const playerOf = (s: PublicMatchState, slot: PlayerSlot) => s.players[slot];
 
 // ---------------------------------------------------------------- authority
-interface PendingPlay { card: CardInstance | null; pass: boolean; extraMp: number; totalCost: number }
+interface PendingPlay { card: CardInstance | null; pass: boolean; extraMp: number; totalCost: number; charge?: boolean }
 
 export class MatchAuthority {
   readonly content: GameContent;
@@ -204,7 +210,10 @@ export class MatchAuthority {
     if (this.pending[i]) return fail(CommandError.AlreadySubmitted, '이미 제출했습니다.');
     const p = this.players[i];
 
-    if (cmd.pass) {
+    if (cmd.charge) {
+      if (!this.options.chargeExperiment) return fail(CommandError.PassNotAllowed, '충전은 실험 규칙이 켜져 있을 때만 사용할 수 있습니다.');
+      this.pending[i] = { card: null, pass: true, extraMp: 0, totalCost: 0, charge: true };
+    } else if (cmd.pass) {
       if (p.canAffordAny(this.content, this.field, this.options)) return fail(CommandError.PassNotAllowed, '낼 수 있는 카드가 있을 때는 턴을 넘길 수 없습니다.');
       this.pending[i] = { card: null, pass: true, extraMp: 0, totalCost: 0 };
     } else {
@@ -234,7 +243,7 @@ export class MatchAuthority {
   private resolve() {
     const plays: PlayInput[] = [0, 1].map(i => {
       const pp = this.pending[i]!;
-      return { card: pp.pass ? this.content.passCard : this.content.getCard(pp.card!.cardId)!, extraMp: pp.extraMp };
+      return { card: pp.charge ? this.content.chargeCard : pp.pass ? this.content.passCard : this.content.getCard(pp.card!.cardId)!, extraMp: pp.extraMp, charge: !!pp.charge };
     });
     const rc = resolveRound(this.content, this.field, this.options, plays[0], plays[1]);
     const result: RoundResult = {
@@ -246,7 +255,8 @@ export class MatchAuthority {
     for (let i = 0; i < 2; i++) {
       const pp = this.pending[i]!;
       const revealed: RevealedPlay = {
-        slot: i as PlayerSlot, cardUid: pp.card ? pp.card.uid : null, cardId: pp.pass ? PASS_CARD_ID : pp.card!.cardId, isPass: pp.pass,
+        slot: i as PlayerSlot, cardUid: pp.card ? pp.card.uid : null, cardId: pp.charge ? CHARGE_CARD_ID : pp.pass ? PASS_CARD_ID : pp.card!.cardId, isPass: pp.pass,
+        isCharge: !!pp.charge, chargeMp: 0,
         extraMp: pp.extraMp, mpSpent: pp.pass ? 0 : pp.totalCost, stats: i === 0 ? rc.statsP1 : rc.statsP2, afterHit: i === 0 ? rc.afterHitP1 : rc.afterHitP2,
       };
       if (i === 0) result.p1 = revealed; else result.p2 = revealed;
@@ -259,6 +269,13 @@ export class MatchAuthority {
     if (rc.afterHitP1.mpTax > 0) { this.players[1].mpTax = rc.afterHitP1.mpTax; result.mpTaxApplied[1] = rc.afterHitP1.mpTax; }
     if (rc.afterHitP2.mpTax > 0) { this.players[0].mpTax = rc.afterHitP2.mpTax; result.mpTaxApplied[0] = rc.afterHitP2.mpTax; }
     this.field = rc.fieldAfter;
+    // 실험 '충전': 전투 해결 후 추가 MP (최대 MP 유지)
+    for (let i = 0; i < 2; i++) {
+      if (!this.pending[i]!.charge) continue;
+      const p = this.players[i], before = p.mp;
+      p.mp = Math.min(p.maxMp, p.mp + this.content.rules.chargeMp);
+      (i === 0 ? result.p1 : result.p2).chargeMp = p.mp - before;
+    }
     for (let i = 0; i < 2; i++) if (!this.pending[i]!.pass) this.players[i].discard.push(this.pending[i]!.card!);
     this.history.push({ round: this.round, fieldName: rc.infoAfter.name, modeType: rc.infoAfter.mode.type, top: rc.infoAfter.mode.top, second: rc.infoAfter.mode.second });
 
@@ -288,7 +305,9 @@ export class MatchAuthority {
       const gain = Math.max(R.minMpGain, R.mpPerRound - p.mpTax);
       p.mpTax = 0;
       p.mp = Math.min(p.maxMp, p.mp + gain);
-      this.draw(p, R.drawPerRound);
+      // 손패 최대 장수: 가득 차 있으면 드로우를 건너뜀 (충전은 카드를 소비하지 않으므로)
+      const room = Math.max(0, R.maxHand - p.hand.length);
+      this.draw(p, Math.min(R.drawPerRound, room));
       this.pending[i] = null;
       this.ready[i] = false;
     }
@@ -326,7 +345,7 @@ export class MatchAuthority {
       slot, mp: p.mp, canAffordAny: p.canAffordAny(this.content, this.field, this.options), hand: p.hand.map(c => ({ ...c })),
       deckCount: p.deck.length, discardCount: p.discard.length, submitted: pend !== null,
       submittedCardUid: pend?.card?.uid ?? null, submittedCardId: pend?.card?.cardId ?? null, submittedPass: !!pend && pend.pass,
-      submittedExtraMp: pend?.extraMp ?? 0, submittedTotalCost: pend?.totalCost ?? 0,
+      submittedExtraMp: pend?.extraMp ?? 0, submittedTotalCost: pend?.totalCost ?? 0, submittedCharge: !!pend?.charge,
     };
   }
 
@@ -344,6 +363,12 @@ export function botChoose(content: GameContent, view: PrivatePlayerView, field: 
   const affordable = view.hand
     .map(inst => ({ inst, def: content.getCard(inst.cardId) }))
     .filter(x => x.def && terms(content, x.def, field, opts).cost <= view.mp);
+  if (opts.chargeExperiment) {
+    // 실험: 낼 카드가 없으면 충전, 손에 아직 못 쓰는 고코스트 카드가 있으면 1/3 확률로 충전
+    if (affordable.length === 0) return chargeCommand(view.slot);
+    const saving = view.hand.some(c => { const d = content.getCard(c.cardId); return d && terms(content, d, field, opts).cost > view.mp; });
+    if (saving && rng.next(3) === 0) return chargeCommand(view.slot);
+  }
   if (affordable.length === 0) return passCommand(view.slot);
   const pick = affordable[rng.next(affordable.length)];
   const t = terms(content, pick.def!, field, opts);

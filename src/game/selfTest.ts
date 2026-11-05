@@ -22,10 +22,10 @@ const CONFIRMED: Record<number, Element[]> = {
 };
 const expected = (a: Element, b: Element) => (CONFIRMED[a].includes(b) ? 1 : CONFIRMED[b].includes(a) ? -1 : 0);
 
-function synthetic(e: Element, atk: number, def: number): CardDef {
-  return { id: 'synthetic-' + Element[e], name: Element[e], element: e, baseCost: 2, atk, def, baseFieldGain: 18, traits: [], isPass: false, isTest: false } as unknown as CardDef;
+function synthetic(e: Element, atk: number): CardDef {
+  return { id: 'synthetic-' + Element[e], name: Element[e], element: e, baseCost: 2, atk, baseFieldGain: 18, traits: [], isPass: false, isTest: false } as unknown as CardDef;
 }
-const stats = (atk: number, def: number, pierce = 0): CombatStats => ({ atk, def, pierce, gain: 0, mods: [] });
+const stats = (atk: number): CombatStats => ({ atk, gain: 0, mods: [] });
 
 export function runSelfTest(content: GameContent, games = 100): SelfTestReport {
   const failures: string[] = [], log: string[] = [];
@@ -41,7 +41,7 @@ export function runSelfTest(content: GameContent, games = 100): SelfTestReport {
     pairs++;
     const exp = expected(a, b);
     check(relation(content, a, b) === exp, `Relation ${Element[a]} vs ${Element[b]} expected ${exp}`);
-    const ca = synthetic(a, 5, 1), cb = synthetic(b, 4, 1);
+    const ca = synthetic(a, 5), cb = synthetic(b, 4);
     const sa = combat(content, ca, cb, empty, opts), sb = combat(content, cb, ca, empty, opts);
     check(sa.atk === 5 && sb.atk === 4, `${Element[a]} vs ${Element[b]}: matchup must not change ATK by default`);
     const o = resolveDamage(content, ca, sa, cb, sb);
@@ -49,16 +49,16 @@ export function runSelfTest(content: GameContent, games = 100): SelfTestReport {
     if (ld) {
       const lightIsP1 = a === Element.Light;
       check(o.result === AttackResult.LightDark, `${Element[a]} vs ${Element[b]} should be LightDark`);
-      check(lightIsP1 ? o.damageToP1 === 0 && o.damageToP2 === 7 : o.damageToP2 === 0 && o.damageToP1 === 7, `${Element[a]} vs ${Element[b]} special damage wrong`);
-    } else if (exp > 0) check(o.result === AttackResult.P1Only && o.damageToP1 === 0 && o.damageToP2 === 4, `${Element[a]}>${Element[b]}: only P1 should hit`);
-    else if (exp < 0) check(o.result === AttackResult.P2Only && o.damageToP1 === 3 && o.damageToP2 === 0, `${Element[a]}<${Element[b]}: only P2 should hit`);
-    else check(o.result === AttackResult.Both && o.damageToP1 === 3 && o.damageToP2 === 4, `${Element[a]}=${Element[b]}: both should hit`);
+      check(lightIsP1 ? o.damageToP1 === 0 && o.damageToP2 === 9 : o.damageToP2 === 0 && o.damageToP1 === 9, `${Element[a]} vs ${Element[b]} special damage wrong`);
+    } else if (exp > 0) check(o.result === AttackResult.P1Only && o.damageToP1 === 0 && o.damageToP2 === 5, `${Element[a]}>${Element[b]}: only P1 should hit`);
+    else if (exp < 0) check(o.result === AttackResult.P2Only && o.damageToP1 === 4 && o.damageToP2 === 0, `${Element[a]}<${Element[b]}: only P2 should hit`);
+    else check(o.result === AttackResult.Both && o.damageToP1 === 4 && o.damageToP2 === 5, `${Element[a]}=${Element[b]}: both should hit`);
   }
   log.push(`Element pairs checked: ${pairs}`);
-  let ex = resolveDamage(content, synthetic(Element.Light, 0, 0), stats(5, 0), synthetic(Element.Dark, 0, 0), stats(4, 0));
+  let ex = resolveDamage(content, synthetic(Element.Light, 0), stats(5), synthetic(Element.Dark, 0), stats(4));
   check(ex.damageToP1 === 0 && ex.damageToP2 === 9, 'Spec example light 5 / dark 4 → dark 9');
-  ex = resolveDamage(content, synthetic(Element.Light, 0, 0), stats(6, 2, 1), synthetic(Element.Dark, 0, 0), stats(5, 3));
-  check(ex.damageToP2 === 7 && ex.lightDamage === 4 && ex.selfDamage === 3, 'Light/dark uses DEF and pierce');
+  ex = resolveDamage(content, synthetic(Element.Dark, 0), stats(4), synthetic(Element.Light, 0), stats(5));
+  check(ex.damageToP1 === 9 && ex.damageToP2 === 0 && ex.lightDamage === 5 && ex.selfDamage === 4, 'Spec example mirrored → dark (P1) 9');
 
   const named = (id1: string, id2: string, want: AttackResult) => {
     const a = content.getCard(id1), b = content.getCard(id2);
@@ -69,12 +69,13 @@ export function runSelfTest(content: GameContent, games = 100): SelfTestReport {
     if (want === AttackResult.P1Only) check(o.damageToP1 === 0 && o.damageToP2 === damageOf(s1, s2), `${id1} vs ${id2}: damage mismatch`);
     log.push(`${id1} vs ${id2} → ${AttackResult[o.result]}  P1 받음 ${o.damageToP1} / P2 받음 ${o.damageToP2}`);
   };
-  named('fire-ball', 'wind-arrow', AttackResult.P1Only);
-  named('wind-arrow', 'fire-ball', AttackResult.P2Only);
-  named('test-water', 'rock-bullet', AttackResult.P1Only);
-  named('test-light', 'fire-ball', AttackResult.Both);
-  named('test-light', 'test-dark', AttackResult.LightDark);
-  named('fire-ball', 'fire-ball', AttackResult.Both);
+  named('fire-bolt', 'vine-whip', AttackResult.P1Only);
+  named('vine-whip', 'fire-bolt', AttackResult.P2Only);
+  named('water-bolt', 'rock-bullet', AttackResult.P1Only);
+  named('light-ray', 'fire-bolt', AttackResult.Both);
+  named('light-ray', 'shadow-bolt', AttackResult.LightDark);
+  named('shadow-bolt', 'ice-shard', AttackResult.P1Only);
+  named('fire-bolt', 'fire-bolt', AttackResult.Both);
 
   simulate(content, games, opts, check, log);
   if (content.cards.some(c => c.isTest)) { const t = cloneOptions(opts); t.testCards = true; simulate(content, Math.max(1, games / 2), t, check, log); }

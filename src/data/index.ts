@@ -7,7 +7,7 @@ import { ELEMENTS, HYBRIDS } from './elements';
 import { RULES } from './rules';
 import { TRAITS } from './traits';
 
-export interface CardOverride { cost?: number; atk?: number; def?: number; gain?: number }
+export interface CardOverride { cost?: number; atk?: number; gain?: number }
 
 /** Values the Debug panel can change at runtime (merged on top of src/data). */
 export interface DataOverrides {
@@ -34,7 +34,6 @@ export function toCardDef(c: CardData, over?: CardOverride): CardDef {
     element: c.element,
     baseCost: over?.cost ?? c.cost,
     atk: over?.atk ?? c.atk,
-    def: over?.def ?? c.def,
     baseFieldGain: over?.gain ?? c.gain,
     traits: c.traits.map(id => {
       const t = TRAITS[id];

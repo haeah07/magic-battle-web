@@ -3,7 +3,7 @@ import { CARD } from '../config/layout';
 import { THEME } from '../config/theme';
 import { VFX } from '../config/vfx';
 import { CardPower, powerFromStats } from '../core/combat';
-import { CardDef, CombatStats, roleLabel, traitIsAlways } from '../core/types';
+import { CardDef, CHARGE_CARD_ID, CombatStats, roleLabel } from '../core/types';
 import { VisualLibrary } from '../game/visuals';
 import { CardAuraView } from '../vfx/cardAura';
 import { InvestAuraView } from '../vfx/investAura';
@@ -132,7 +132,8 @@ export class CardView {
     const stats = rect('Stats', this.front);
     stats.anchorMin = v2(0, 0); stats.anchorMax = v2(1, 0); stats.pivot = v2(0.5, 0);
     stats.offsetMin = v2(10, 10); stats.offsetMax = v2(-10, 68);
-    ['ATK', 'DEF', '필드'].forEach((l, i) => this.makeStat(stats, i, l));
+    // v9: DEF 제거 — 공격력과 필드 누적 두 칸
+    ['ATK', '필드'].forEach((l, i) => this.makeStat(stats, i, l));
 
     this.powerChip = makeImage('PowerChip', this.front, th.positiveColor, SF.roundedRect(10), true);
     this.powerChip.rt.place(v2(1, 1), v2(-14, -46), v2(50, 22), v2(1, 1));
@@ -162,7 +163,7 @@ export class CardView {
 
   private makeStat(parent: RT, index: number, label: string) {
     const cell = rect(label, parent);
-    cell.anchorMin = v2(index / 3, 0); cell.anchorMax = v2((index + 1) / 3, 1);
+    cell.anchorMin = v2(index / 2, 0); cell.anchorMax = v2((index + 1) / 2, 1);
     cell.offsetMin = v2(2, 0); cell.offsetMax = v2(-2, 0);
     this.statBg[index] = makeImage('Bg', cell, C(1, 1, 1, 0.06), SF.roundedRect(10), true);
     this.statBg[index].rt.stretch();
@@ -180,11 +181,12 @@ export class CardView {
     this.cardId = def ? def.id : null;
     if (!def) { this.setFaceDown(true); return; }
     const lib = this.lib;
-    const ec = def.isPass ? C(0.55, 0.58, 0.62) : lib.elementColor(def.element);
+    const isCharge = def.id === CHARGE_CARD_ID;
+    const ec = isCharge ? MANA_COLOR : def.isPass ? C(0.55, 0.58, 0.62) : lib.elementColor(def.element);
     this.elementColor = ec;
     this.base.color = lerpColor(C(0.06, 0.075, 0.1), ec, 0.16);
     this.border.color = C(ec.r, ec.g, ec.b, 0.95);
-    this.name.text = def.isPass ? '턴 넘김' : def.name;
+    this.name.text = def.name;
     this.cost.text = String(def.baseCost);
     this.investGain = 0;
     this.invest.set(0, 1, ec);
@@ -203,7 +205,7 @@ export class CardView {
     this.art.rt.setActive(!!cardArt);
     if (cardArt) this.art.sprite = croppedArt(scene.textures, def.id, cardArt, lib.artCrop(def.id), CARD.artSize.x, CARD.artSize.y, 12);
     rtOf(this.placeholderGlyph).setActive(!cardArt);
-    this.placeholderGlyph.text = def.isPass ? '-' : lib.elementGlyph(def.element);
+    this.placeholderGlyph.text = isCharge ? '+2 MP' : def.isPass ? '-' : lib.elementGlyph(def.element);
     this.testBadge.rt.setActive(def.isTest);
     this.setStats(stats);
     this.setFaceDown(false);
@@ -214,22 +216,18 @@ export class CardView {
     if (!def) return;
     const th = THEME;
     const atk = stats ? stats.atk : def.atk;
-    const d = stats ? stats.def : def.def;
     const gain = stats ? stats.gain : def.isPass ? 0 : def.baseFieldGain;
     this.setStat(0, atk, def.atk);
-    this.setStat(1, d, def.def);
-    this.setStat(2, gain - this.investGain, def.isPass ? 0 : def.baseFieldGain);
+    this.setStat(1, gain - this.investGain, def.isPass ? 0 : def.baseFieldGain);
     if (this.investGain > 0) {
-      this.statValue[2].text = gain + '◆';
-      this.statValue[2].color = MANA_COLOR;
-      this.statBg[2].color = C(MANA_COLOR.r, MANA_COLOR.g, MANA_COLOR.b, 0.22);
+      this.statValue[1].text = gain + '◆';
+      this.statValue[1].color = MANA_COLOR;
+      this.statBg[1].color = C(MANA_COLOR.r, MANA_COLOR.g, MANA_COLOR.b, 0.22);
     }
     const traits = def.traits.map(t => t.label);
     const role = roleLabel(def.role);
     if (role) traits.unshift(colorize(role, th.accentColor));
-    const pierce = stats ? stats.pierce : def.traits.filter(traitIsAlways).reduce((a, t) => a + t.combatBonus.pierce, 0);
-    if (pierce > 0 && !traits.some(t => t.includes('관통'))) traits.push(`관통 ${pierce}`);
-    this.trait.text = def.isPass ? 'MP 부족 · 카드 없이 진행' : traits.join(' · ');
+    this.trait.text = def.isPass ? (def.note || 'MP 부족 · 카드 없이 진행') : traits.join(' · ');
 
     const power = stats ? powerFromStats(stats) : CardPower.neutral;
     const style = def.isPass ? 'None' : this.lib.auraStyle(def.element);

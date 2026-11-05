@@ -1,6 +1,6 @@
 // ============================================================================
-//  규칙 설정 (Unity RuleConfig 와 동일한 값)  ── 밸런스 숫자는 전부 여기서 수정합니다.
-//  예) 라운드당 MP 회복 2 → 3 :  mpPerRound: 3
+//  규칙 설정 ── 밸런스 숫자는 전부 여기서 수정합니다. (v9 베이스라인: DEF 없음, MP +3, 7속성 21장 덱)
+//  예) 라운드당 MP 회복 3 → 4 :  mpPerRound: 4
 //  저장하면 dev 서버가 즉시 새로고침됩니다. 브라우저에서 임시로 바꾸려면 왼쪽 위 ⊕(디버그) → 수치 편집을 쓰세요.
 // ============================================================================
 import { Element, RuleSet, sd } from '../core/types';
@@ -10,11 +10,11 @@ export const RULES: RuleSet = {
   startHp: 24,          // 시작 HP (포탑 체력)
   startMp: 4,           // 시작 MP
   maxMp: 10,            // 최대 MP
-  mpPerRound: 2,        // 라운드당 MP 회복
+  mpPerRound: 3,        // 라운드당 MP 회복 (v9: 2 → 3, 저비용 카드를 쓰면서도 MP 가 조금씩 남음)
   minMpGain: 1,         // 냉기 등으로 줄어도 최소 회복량
   handSize: 5,          // 시작 손패 크기
   drawPerRound: 1,      // 라운드당 드로우
-  copiesPerCard: 2,     // 덱에 들어가는 카드별 복사 수
+  copiesPerCard: 1,     // 덱에 들어가는 카드별 복사 수 (v9: 21종 × 1장 = 21장)
 
   // ── 상성 ──────────────────────────────────
   matchupAdvantageBonus: sd({ atk: 2 }),     // (실험 옵션 '상성 수치 보정' ON 일 때만)
@@ -49,6 +49,10 @@ export const RULES: RuleSet = {
   investGainPerMp: 5,     // MP 1당 추가 필드 누적 (카드별 값이 없을 때)
   investMaxExtra: 2,      // 최대 추가 투자량 (카드별 값이 없을 때)
   minCardCost: 1,         // 코스트 감소 효과가 있어도 최소 코스트
+  maxHand: 5,             // 손패 최대 장수 — 가득 차 있으면 그 라운드 드로우를 건너뜀
+
+  // ── 충전 (디버그 패널에서 ON/OFF) ──
+  chargeMp: 2,           // 충전 시 추가 MP (라운드 회복과 별도, 최대 MP 유지)
 
   // ── 기본 테스트 옵션 (디버그 패널에서 토글) ──
   defaultOptions: {
@@ -60,5 +64,6 @@ export const RULES: RuleSet = {
     testCards: false,
     elementIdentity: false, // 실험 기능: 속성 성향 (기본 OFF)
     roleCards: false,        // 실험 기능: 역할 카드 (기본 OFF)
+    chargeExperiment: true,  // 충전 행동 (웹 플레이테스트 기본 ON)
   },
 };

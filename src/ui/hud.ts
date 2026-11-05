@@ -441,7 +441,7 @@ export class ActionBar {
 
 // ============================================================================ MatchupHint (hover only)
 export class MatchupHint {
-  static readonly PanelSize = v2(320, 104);
+  static readonly PanelSize = v2(340, 132);
   readonly rt: RT;
   private dot: Img; private dotGlyph: Txt; private header: Txt; private body: RichTxt;
   showIdentity = true;
@@ -459,6 +459,7 @@ export class MatchupHint {
     this.body = makeRich('Body', this.rt, '', 16, C(0.82, 0.86, 0.92), 'UpperLeft');
     rtOf(this.body).stretch(16, 12, 46, 8);
     this.body.lineSpacing = 1.05;
+    this.body.wrap = true;
     this.showIdle();
   }
   private names(els: Element[]) { return els.map(e => colorize(this.lib.elementLabel(e), this.lib.elementColor(e))).join(' '); }
@@ -477,6 +478,8 @@ export class MatchupHint {
       const strong = strongAgainst(content, card.element), weak = weakAgainst(content, card.element);
       lines.push(colorize('이김 ', th.positiveColor) + (strong.length ? this.names(strong) : '-') + '   ' + colorize('짐 ', th.negativeColor) + (weak.length ? this.names(weak) : '-'));
     }
+    // v9: 카드 효과는 한 문장 설명으로 보여줌
+    for (const t of card.traits) if (t.description) lines.push(colorize(t.label, th.accentColor) + ' ' + t.description);
     const id = content.getElement(card.element)?.identity;
     if (id && id.summary && this.showIdentity) {
       const parts = id.summary.split('·');

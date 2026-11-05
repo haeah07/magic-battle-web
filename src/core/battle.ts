@@ -39,7 +39,7 @@ export interface AfterHitResult {
   washoutTarget: Element;
 }
 
-export interface PlayInput { card: CardDef; extraMp: number }
+export interface PlayInput { card: CardDef; extraMp: number; charge?: boolean }
 
 export interface RoundComputation {
   statsP1: CombatStats;
@@ -142,6 +142,14 @@ export function resolveRound(content: GameContent, field: FieldState, opts: Test
   const statsP1 = combat(content, p1.card, p2.card, field, opts, p1.extraMp);
   const statsP2 = combat(content, p2.card, p1.card, field, opts, p2.extraMp);
   const outcome = resolveDamage(content, p1.card, statsP1, p2.card, statsP2);
+  // 실험 '충전': 카드 vs 충전 → 상성 판정 없이 카드가 그대로 공격하고 결과는 '승리'로 처리 (충전 쪽은 공격하지 않음)
+  if (!!p1.charge !== !!p2.charge) {
+    const cardSlot = p1.charge ? PlayerSlot.P2 : PlayerSlot.P1;
+    outcome.result = cardSlot === PlayerSlot.P1 ? AttackResult.P1Only : AttackResult.P2Only;
+    outcome.failedP1 = cardSlot !== PlayerSlot.P1; outcome.failedP2 = cardSlot !== PlayerSlot.P2;
+    outcome.damageToP1 = cardSlot === PlayerSlot.P2 ? outcome.rawP2ToP1 : 0;
+    outcome.damageToP2 = cardSlot === PlayerSlot.P1 ? outcome.rawP1ToP2 : 0;
+  }
   const afterHitP1 = afterHit(content, opts, p1.card, statsP1, dealtBy(PlayerSlot.P1, outcome), p1.extraMp, standingOf(PlayerSlot.P1, outcome));
   const afterHitP2 = afterHit(content, opts, p2.card, statsP2, dealtBy(PlayerSlot.P2, outcome), p2.extraMp, standingOf(PlayerSlot.P2, outcome));
   const gains: FieldGain[] = [];

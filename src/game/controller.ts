@@ -5,14 +5,14 @@ import { THEME } from '../config/theme';
 import { VFX } from '../config/vfx';
 import { PlayTerms, preview, terms, termsFromMods } from '../core/combat';
 import { fieldInfo } from '../core/field';
-import { botChoose, cardCommand, CardInstance, fieldChanged, MatchPhase, MatchOutcome, passCommand, playOf, PrivatePlayerView, PublicMatchState, PublicPlayerState, RoundResult, SubmitCardCommand } from '../core/match';
+import { botChoose, cardCommand, chargeCommand, CardInstance, fieldChanged, MatchPhase, MatchOutcome, passCommand, playOf, PrivatePlayerView, PublicMatchState, PublicPlayerState, RoundResult, SubmitCardCommand } from '../core/match';
 import { outcomeFailed } from '../core/battle';
 import { DeterministicRandom } from '../core/random';
 import { CardDef, CombatStats, Element, other, PlayerSlot, slotLabel, TestRuleOptions } from '../core/types';
 import { GameContent } from '../core/content';
 import { IMatchClient } from '../net/client';
 import { BattleScreen } from '../ui/battleScreen';
-import { CardView } from '../ui/cardView';
+import { CardView, MANA_COLOR } from '../ui/cardView';
 import { C, Color, colorize } from '../ui/color';
 import { Co, CoOwner, V2 } from '../ui/engine';
 import { BattlePresenter } from './presenter';
@@ -37,6 +37,9 @@ export class BattleController {
   private active = PlayerSlot.P1;
   private viewer = PlayerSlot.P1;
   private selection = new Map<PlayerSlot, string>();
+  /** 실험 '충전': 이번 턴 충전을 고른 플레이어 (카드 선택과 배타적) */
+  private charging = new Set<PlayerSlot>();
+  private get chargeOn() { return !!this.state.options.chargeExperiment; }
   private handOrder = new Map<PlayerSlot, string[]>();
   private extra = new Map<PlayerSlot, number>();
   private wired = new Set<CardView>();
@@ -80,6 +83,7 @@ export class BattleController {
     });
 
     ui.actionBar.onPrimary.push(() => this.onPrimary());
+    ui.onCharge.push(() => this.toggleCharge());
     ui.actionBar.onSecondary.push(() => this.onSecondary());
     ui.invest.onExtraChosen.push(x => this.onExtraChosen(x));
     ui.topBar.onMatchup.push(() => ui.matchup.show(this.focusElement(), null));
@@ -132,6 +136,7 @@ export class BattleController {
     this.presenter.co.stopAll();
     this.seed = seed;
     this.selection.clear();
+    this.charging.clear();
     this.extra.clear();
     this.handOrder.clear();
     this.pendingResult = null;
@@ -252,6 +257,7 @@ export class BattleController {
     this.renderMp(s);
     this.renderInvest();
     this.renderActionBar();
+    this.renderChargeButton();
     this.renderResult(s);
     this.renderHint();
     if (this.ui.info.visible) this.ui.info.refresh(roundDetail(this.lib, s.lastResult), fieldDetail(this.lib, s));
@@ -272,7 +278,8 @@ export class BattleController {
         if (def && !def.isPass) view.card.setCost(termsFromMods(this.content, def, play.stats.mods).cost);
         if (def && !def.isPass && play.extraMp > 0)
           view.card.setInvestment(play.extraMp, Math.max(play.extraMp, termsFromMods(this.content, def, play.stats.mods).maxExtra), play.afterHit?.investGain ?? 0, play.stats, this.driftToCenter(slot));
-        if (def && def.isPass) view.setStatus('턴 넘김', th.mutedTextColor);
+        if (play.isCharge) view.setStatus(`충전 +${play.chargeMp ?? 0} MP`, MANA_COLOR);
+        else if (def && def.isPass) view.setStatus('턴 넘김', th.mutedTextColor);
         else {
           const failed = outcomeFailed(s.lastResult.outcome, slot);
           view.card.setFailed(failed);
@@ -288,7 +295,7 @@ export class BattleController {
       if (pub.submitted && controlled && slot === this.viewer) {
         // own submitted card stays visible to its owner only
         const pv = this.client.getPrivateView(slot);
-        const def = pv.submittedPass ? this.content.passCard : pv.submittedCardId ? this.content.getCard(pv.submittedCardId) ?? null : null;
+        const def = pv.submittedCharge ? this.content.chargeCard : pv.submittedPass ? this.content.passCard : pv.submittedCardId ? this.content.getCard(pv.submittedCardId) ?? null : null;
         const sx = pv.submittedExtraMp;
         const sstats = def ? this.preview(def, sx) : null;
         view.showCard(def, pv.submittedCardUid, sstats, def === null, false);
@@ -297,11 +304,15 @@ export class BattleController {
           view.card.setCost(st.cost);
           view.card.setInvestment(sx, st.maxExtra, st.investGain(sx), sstats, this.driftToCenter(slot));
         }
-        view.setStatus(sx > 0 ? `제출 완료 · 투자 +${sx}` : '제출 완료', th.positiveColor);
+        view.setStatus(pv.submittedCharge ? '제출 완료 · 충전' : sx > 0 ? `제출 완료 · 투자 +${sx}` : '제출 완료', th.positiveColor);
       } else if (pub.submitted) {
         // opponent's card and investment are never visible before the reveal
         view.showHidden();
         view.setStatus('제출 완료', th.positiveColor);
+      } else if (editable && this.charging.has(slot)) {
+        // 실험 '충전': 내 슬롯에 충전 표시 (상대에게는 제출 후에도 뒷면만 보임)
+        view.showCard(this.content.chargeCard, null, null, false, true);
+        view.setStatus('충전 +2 MP', MANA_COLOR);
       } else if (editable && sel) {
         const pvSel = this.client.getPrivateView(slot);
         const x = this.clampedExtra(slot, sel, pvSel.mp);
@@ -423,6 +434,7 @@ export class BattleController {
     if (cost > pv.mp) { this.toast(`MP 부족 (필요 ${cost})`); return; }
     const changed = this.selection.get(this.active) !== uid;
     if (changed) this.extra.set(this.active, 0);
+    this.charging.delete(this.active);
     const source = this.ui.hand.cards.find(c => c.uid === uid && c.rt.activeInHierarchy);
     const from = source ? source.visual.worldPosition() : null;
     this.selection.set(this.active, uid);
@@ -433,7 +445,24 @@ export class BattleController {
 
   private deselect() {
     this.extra.delete(this.active);
-    if (this.selection.delete(this.active)) this.renderAll();
+    const wasCharging = this.charging.delete(this.active);
+    if (this.selection.delete(this.active) || wasCharging) this.renderAll();
+  }
+
+  /** 실험 '충전' 버튼: 현재 선택 카드를 해제하고 충전을 고름 (다시 누르면 취소) */
+  toggleCharge() {
+    if (!this.chargeOn || !this.canEdit(this.active) || this.ui.swapping) return;
+    if (this.charging.has(this.active)) { this.charging.delete(this.active); this.renderAll(); return; }
+    this.selection.delete(this.active);
+    this.extra.delete(this.active);
+    this.charging.add(this.active);
+    this.hovered = null;
+    this.renderAll();
+  }
+
+  private renderChargeButton() {
+    const show = this.chargeOn && this.canEdit(this.active);
+    this.ui.setChargeButton(show, this.charging.has(this.active));
   }
 
   private onExtraChosen(extra: number) {
@@ -455,7 +484,7 @@ export class BattleController {
   }
 
   private onSlotClicked(slot: PlayerSlot) {
-    if (slot === this.active && this.canEdit(slot) && this.selection.has(slot)) this.deselect();
+    if (slot === this.active && this.canEdit(slot) && (this.selection.has(slot) || this.charging.has(slot))) this.deselect();
   }
 
   private renderActionBar() {
@@ -467,7 +496,9 @@ export class BattleController {
         const pv = this.client.getPrivateView(this.active);
         const selected = this.selection.has(this.active);
         const pc = this.lib.playerColor(this.active);
-        if (!pv.canAffordAny) bar.render('MP 부족 · 카드 없이 진행', th.negativeColor, '턴 넘기기', true, null, false, true);
+        if (this.charging.has(this.active)) bar.render(`${nameOf(this.active)} · 충전`, pc, '충전 제출', true, '선택 취소', true, true);
+        else if (!pv.canAffordAny && this.chargeOn) bar.render('MP 부족 · 충전으로 진행', th.negativeColor, '카드 제출', false, null, false);
+        else if (!pv.canAffordAny) bar.render('MP 부족 · 카드 없이 진행', th.negativeColor, '턴 넘기기', true, null, false, true);
         else if (selected) bar.render(`${nameOf(this.active)} · 카드 확정`, pc, '카드 제출', true, '선택 취소', true, true);
         else bar.render(`${nameOf(this.active)} · 카드 선택`, pc, '카드 제출', false, null, false);
         break;
@@ -529,7 +560,8 @@ export class BattleController {
     const pv = this.client.getPrivateView(this.active);
     let cmd: SubmitCardCommand;
     const uid = this.selection.get(this.active);
-    if (uid) cmd = cardCommand(this.active, uid, this.extraFor(this.active));
+    if (this.charging.has(this.active)) cmd = chargeCommand(this.active);
+    else if (uid) cmd = cardCommand(this.active, uid, this.extraFor(this.active));
     else if (!pv.canAffordAny) cmd = passCommand(this.active);
     else { this.toast('먼저 카드를 선택하세요'); return; }
 
@@ -540,6 +572,7 @@ export class BattleController {
     if (!res.ok) { this.toast(res.message); return; }
     this.selection.delete(this.active);
     this.extra.delete(this.active);
+    this.charging.delete(this.active);
     this.hovered = null;
     const submitted = this.active;
     if (this.pendingResult) {
@@ -556,6 +589,7 @@ export class BattleController {
     const card = (slot: PlayerSlot) => {
       const play = playOf(r, slot);
       const def = play ? this.content.getCard(play.cardId) : null;
+      if (play && play.isCharge) return colorize('충전', MANA_COLOR);
       if (!def || def.isPass) return colorize('패스', th.mutedTextColor);
       return colorize(def.name, this.lib.elementColor(def.element));
     };
@@ -673,7 +707,7 @@ export class BattleController {
   }
 
   private onOptionsChanged(o: TestRuleOptions) {
-    const deckChanged = o.testCards !== this.state.options.testCards || o.roleCards !== this.state.options.roleCards;
+    const deckChanged = o.testCards !== this.state.options.testCards || o.roleCards !== this.state.options.roleCards || !!o.chargeExperiment !== !!this.state.options.chargeExperiment;
     this.client.requestOptions(o);
     if (deckChanged) {
       this.startMatch(newSeed());
@@ -723,7 +757,8 @@ export class BattleController {
           if (this.canEdit(this.active)) {
             const st = this.state;
             const cmd = botChoose(this.content, this.client.getPrivateView(this.active), st.field, st.options, this.botRng);
-            if (!cmd.pass && cmd.cardUid) { this.selection.set(this.active, cmd.cardUid); this.extra.set(this.active, cmd.extraMp); }
+            if (cmd.charge) { this.selection.delete(this.active); this.charging.add(this.active); }
+            else if (!cmd.pass && cmd.cardUid) { this.selection.set(this.active, cmd.cardUid); this.extra.set(this.active, cmd.extraMp); }
             this.renderAll();
             await co.wait(0.25 / Math.max(0.5, this.speed));
             this.submitActive();

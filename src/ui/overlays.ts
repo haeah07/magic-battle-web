@@ -186,16 +186,15 @@ export class MatchupPanel {
 }
 
 // ============================================================================ DebugPanel (디버그 · 테스트 규칙)
-type ToggleKey = 'matchupStatBonus' | 'resonance' | 'hybrid' | 'unstable' | 'suppression' | 'elementIdentity' | 'roleCards' | 'testCards';
+type ToggleKey = 'chargeExperiment' | 'matchupStatBonus' | 'resonance' | 'hybrid' | 'unstable' | 'suppression' | 'elementIdentity' | 'roleCards' | 'testCards';
 const RULES: [ToggleKey, string, string][] = [
+  ['chargeExperiment', '충전', '카드 대신 충전 (+2 MP, 이번 턴 공격 안 함) (새 게임)'],
   ['matchupStatBonus', '상성 수치 보정 (구 규칙)', '우위 ATK +2 / 열세 ATK -1 추가 · 빛·어둠 제외'],
   ['resonance', '공명 Lv1~3', '같은 속성 필드가 쌓이면 해당 카드 강화'],
   ['hybrid', '혼합 필드 효과', '상위 두 속성 조합 효과'],
   ['unstable', '불안정 필드 효과', '상위 두 속성 카드 필드 누적 +2'],
   ['suppression', '우세 억제', '우세 속성에 불리한 카드 ATK -1'],
   ['elementIdentity', '속성 성향 · 지배 효과', '7속성 성향(상세 보기 참고) + 지배 시 코스트·투자 변화'],
-  ['roleCards', '역할 카드 포함', '고화력·저코스트·필드 조성·필드 의존·상성 특화·고위험·안정형 7장 (새 게임)'],
-  ['testCards', '테스트 카드 포함', 'Lightning·물/빛/어둠 테스트 카드 (새 게임)'],
 ];
 
 export class DebugPanel {
@@ -266,7 +265,7 @@ export class DebugPanel {
     this.options = cloneOptions(options);
     const th = THEME;
     for (const t of this.toggles) {
-      const on = options[t.key], def = defaults[t.key];
+      const on = !!options[t.key], def = !!defaults[t.key];
       t.text.text = `${on ? colorize('● ON ', th.positiveColor) : colorize('○ OFF', th.mutedTextColor)}   ${t.label}` + (on !== def ? colorize('  (기본값과 다름)', th.accentColor) : '');
     }
     this.speed.setLabel(`연출 속도  x${+speed.toFixed(2)}`);

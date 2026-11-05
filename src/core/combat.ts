@@ -36,7 +36,7 @@ export function identityModifiers(content: GameContent, card: CardDef, opts: Tes
   if (!opts.elementIdentity || card.isPass) return mods;
   const id = content.getElement(card.element)?.identity;
   if (!id) return mods;
-  if (id.investGainBonus !== 0) mods.push(mod(ModifierKind.Identity, `${content.label(card.element)} 성향`, { atk: 0, def: 0, pierce: 0, gain: 0, cost: 0, investGain: id.investGainBonus, investMax: 0 }));
+  if (id.investGainBonus !== 0) mods.push(mod(ModifierKind.Identity, `${content.label(card.element)} 성향`, { atk: 0, gain: 0, cost: 0, investGain: id.investGainBonus, investMax: 0 }));
   return mods;
 }
 
@@ -78,8 +78,6 @@ export function traitApplies(content: GameContent | null, t: TraitDef, opp: Card
   switch (t.condition) {
     case TraitCondition.Always: return true;
     case TraitCondition.OpponentElementIs: return !!opp && opp.element === t.conditionElement;
-    case TraitCondition.OpponentBaseDefAtMost: return !!opp && opp.def <= t.conditionValue;
-    case TraitCondition.OpponentBaseDefAtLeast: return !!opp && opp.def >= t.conditionValue;
     case TraitCondition.FieldLevelAtLeast:
       return !!content && !!field && level(content.rules, field.get(t.conditionElement)) >= Math.max(1, t.conditionValue);
     default: return false;
@@ -107,15 +105,9 @@ function previewModifiers(content: GameContent, card: CardDef, field: FieldState
 
 export function sumStats(content: GameContent, card: CardDef, mods: Modifier[], extraMp: number): CombatStats {
   const t = termsFromMods(content, card, mods);
-  const s: CombatStats = { atk: card.atk, def: card.def, pierce: 0, gain: t.gainWith(extraMp), mods };
-  for (const m of mods) {
-    s.atk += m.delta.atk;
-    s.def += m.delta.def;
-    s.pierce += m.delta.pierce;
-  }
+  const s: CombatStats = { atk: card.atk, gain: t.gainWith(extraMp), mods };
+  for (const m of mods) s.atk += m.delta.atk;
   s.atk = Math.max(0, s.atk);
-  s.def = Math.max(0, s.def);
-  s.pierce = Math.max(0, s.pierce);
   return s;
 }
 
@@ -133,7 +125,8 @@ export function combat(content: GameContent, card: CardDef, opp: CardDef, field:
   return sumStats(content, card, mods, extraMp);
 }
 
-export const damageOf = (attacker: CombatStats, defender: CombatStats) => Math.max(0, attacker.atk - Math.max(0, defender.def - attacker.pierce));
+/** v9: DEF 없음 — 공격이 성공하면 ATK 가 그대로 피해 */
+export const damageOf = (attacker: CombatStats, _defender?: CombatStats) => Math.max(0, attacker.atk);
 
 // ---------------------------------------------------------------- CardPower (empowered / weakened display)
 export enum CardPowerState { Weakened = -1, Neutral = 0, Empowered = 1 }

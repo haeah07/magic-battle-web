@@ -4,7 +4,7 @@
 Unity WebGL 빌드가 아니라 웹 기술로 직접 만든 정적 사이트라서, 브라우저에서 바로 실행하고 수정할 수 있습니다.
 
 - 화면: 1920×1080 기준 16:9 PC 레이아웃 (Unity v6 와 같은 좌표, 창 크기에 맞춰 확대·축소)
-- 규칙: Unity C# 의 Core/Battle/Field/Player/Match 를 1:1 로 옮겼습니다. Unity 에서 뽑은 240판의 기록을 그대로 재생해 라운드별 결과가 모두 같은지 확인합니다.
+- 규칙: Unity C# 의 Core/Battle/Field/Player/Match 구조를 그대로 옮겼습니다. **v9 부터는 게임성 실험용 베이스라인으로 규칙이 Unity v6 와 달라졌습니다** (아래 'v9 베이스라인').
 - 흐름: **UI → 명령(SubmitCardCommand) → MatchAuthority 판정 → RoundResult → 연출** (UI 에는 별도의 계산식이 없습니다)
 
 ---
@@ -85,7 +85,7 @@ magic-battle-web/
 | Core/DefaultContent.cs, Data/GameDatabase.cs | data/index.ts (`buildContent`) | ScriptableObject 대신 TS 데이터 파일 |
 | Data/RuleConfig.cs | **data/rules.ts** | 모든 밸런스 수치 |
 | Cards/CardData.cs | **data/cards.ts** | 카드 16장 |
-| Cards/TraitData.cs | data/traits.ts | 화상·냉기·방벽·연사·감전·가시·창·관통 |
+| Cards/TraitData.cs | data/traits.ts | 연소·밀물·잠식·가시 성장·광휘·냉기 (v9, 한 문장 효과) |
 | Data/ElementData.cs, HybridFieldData.cs, DefaultVisualPresets.cs | data/elements.ts | 상성, 성향, 색·입자·오라 프리셋, 혼합 필드 |
 | Data/UITheme.cs | config/theme.ts | 플레이어 색, 텍스트 색, 연출 속도 |
 | Battle/ElementSystem.cs | core/element.ts | 상성 판정, 빛/어둠 특수 |
@@ -135,7 +135,7 @@ mpPerRound: 3,        // 라운드당 MP 회복
 한 줄이 카드 한 장입니다.
 
 ```ts
-{ id: "fire-ball", name: "Fire Ball", element: Element.Fire, cost: 2, atk: 5, def: 0, gain: 18, traits: ["burn"], art: "fire-ball" },
+{ id: "fire-bolt", name: "Fire Bolt", element: Element.Fire, cost: 2, atk: 4, gain: 14, traits: [], art: "fire-ball" },
 ```
 
 `cost` 코스트 · `atk`/`def` · `gain` 기본 필드 누적 · `traits` 특성(id 는 `traits.ts`) · `invest: { allowed, perMp, max }` 투자 허용/MP당 누적/최대 (생략 시 rules.ts 기본값) · `art` 그림 · `artCrop` 그림 칸에 보일 영역 · `test`/`role` 실험용 표시.
@@ -181,7 +181,7 @@ Unity `BattleScreen.Layout` 과 같은 값입니다. 좌표는 화면 중앙 기
 3. 새 특성이 필요하면 `src/data/traits.ts` 에 추가하고 `traits: ["새id"]` 로 연결합니다.
 4. `npm test` — 데이터 검증(`content.validate()`)과 규칙 테스트가 함께 돕니다.
 
-덱은 `rules.ts` 의 `copiesPerCard`(기본 2장씩)로 자동 구성됩니다. `test: true` 카드는 디버그의 "테스트 카드 포함" 을 켤 때만 들어갑니다.
+덱은 `rules.ts` 의 `copiesPerCard`(v9: 카드마다 1장)로 자동 구성됩니다. 코스트 상한은 없어서 8~9 코스트 카드도 그대로 넣을 수 있습니다.
 
 ## 10. 테스트 실행
 
@@ -189,16 +189,24 @@ Unity `BattleScreen.Layout` 과 같은 값입니다. 좌표는 화면 중앙 기
 npm test
 ```
 
-- `tests/rules.test.ts` — Unity 대표값으로 확인: 기본 상성 49조합, 상성 없음(양쪽 공격), 빛 vs 어둠(빛 5 / 어둠 4 → 어둠 9), 실패 시 피해 0, 실패해도 필드 누적(Ice Ball 18), MP 투자(승 +19 / 무 +24 / 패 +28, 사용 4 MP), MP 부족·초과 투자 거부, 승/무/패 배율(9/14/18), 필드 감소, 공명 Lv, 게임 종료, 봇 60판 불변식.
-- `tests/unityParity.test.ts` — Unity C# 로 돌린 240판(기본·테스트 카드·역할 카드·속성 성향 조합)의 라운드별 손패·MP·명령·스탯·피해·필드·HP 를 TS 엔진이 그대로 재현하는지 비교.
+- `tests/rules.test.ts` — v9 베이스라인: 21장·7속성 구성, 덱 21장과 7속성 드로우, 상성 49조합(DEF 없이 ATK 그대로 피해), 빛 vs 어둠(빛 5 / 어둠 4 → 어둠 9), 실패 시 피해 0·필드 누적, MP +3 회복과 최대 10, 2~7 코스트 사용, 투자는 필드만, 배율·감소·공명, 게임 종료·봇 40판(손패 ≤ 5, MP ≤ 10).
+- `tests/chargeExperiment.test.ts` — 충전: 카드 vs 충전, 충전 vs 충전, MP +2, 최대 10, 손패 5장 유지, OFF 시 거부. (Unity 240판 재생 테스트는 v9 에서 규칙이 달라져 제거했습니다.)
 
 게임 안 **디버그 → 규칙 자가 테스트** 는 현재 데이터로 같은 검사를 브라우저에서 돌립니다.
 
 ## 11. 디버그 패널
 
 화면 왼쪽 위 아이콘 줄의 ⊕ 버튼. Unity 디버그 패널(테스트 규칙 토글, 자동 진행, 자가 테스트, 같은 시드, 연출 속도, 화면 넘기기, 시점)과 같고,
-웹에서는 **수치 편집** 서랍이 추가되어 HP·MP·MP 회복·카드 코스트/ATK/DEF/필드·승무패 배율·필드 감소·공명 기준·역할 카드·속성 성향·연출 속도·VFX 강도를 빌드 없이 바꿀 수 있습니다.
+웹에서는 **수치 편집** 서랍이 추가되어 HP·MP·MP 회복·카드 코스트/ATK/필드·승무패 배율·필드 감소·공명 기준·충전·속성 성향·연출 속도·VFX 강도를 빌드 없이 바꿀 수 있습니다.
 "적용 + 새 게임" 으로 반영되고 브라우저(localStorage)에 저장됩니다. "기본값 복원" 은 `src/data` 의 값으로 되돌립니다.
+
+## v9 베이스라인 (게임성 실험용)
+
+- **DEF 없음:** 카드 정보는 코스트 · ATK · 속성 · 필드 누적 · 효과. 공격이 성공하면 ATK 가 그대로 피해입니다. (공명: 물=필드 누적 +2, 얼음·바위=ATK +1 / 혼합 필드의 DEF 효과도 ATK·필드로 바꿈)
+- **MP:** 라운드마다 +3 (최대 10). 저비용 카드를 쓰면서도 MP 가 조금씩 쌓여 5~7 코스트에 닿습니다.
+- **덱:** 7속성 × 저(2~3)/중(4~5)/고(6~7) 비용 3장 = 21장, 각 1장. 손패 최대 5장(가득 차면 드로우 건너뜀).
+- **충전** (디버그 맨 위 토글, 기본 ON): 카드 대신 충전 → 이번 턴 공격·필드 없음, 카드 소비 없음, 전투 후 MP +2. 공개 전까지 숨김. 카드 vs 충전이면 상성 판정 없이 카드가 그대로 공격('승리' 처리), 충전 vs 충전이면 양쪽 MP +2만.
+- 빛 vs 어둠: 빛의 공격만 성공, 어둠은 빛의 ATK + 자기 ATK 만큼 피해.
 
 ## 12. Unity 와 다른 점 (알려진 차이)
 
@@ -212,7 +220,7 @@ npm test
 | 무작위 입자 | 불꽃 파편·스파크 방향 같은 장식용 난수는 매번 다릅니다(규칙 난수는 동일). |
 | 에디터 도구 | Unity 메뉴(기본 데이터 재생성 등) 대신 TS 데이터 파일을 직접 수정합니다. |
 | 자가 테스트 | 게임 안 버튼은 축약판입니다. 전체 검사는 `npm test`. |
-| 수치 정밀도 | 배율 계산이 C# float 대신 JS double 입니다. v6 값에서는 240판 기록이 모두 일치하며, 반올림 경계에 걸리는 특이한 배율을 넣을 때만 차이가 날 수 있습니다. |
+| 규칙 (v9) | DEF 제거, MP +3, 21장 7속성 덱, 충전 등 게임성 실험 베이스라인으로 Unity v6 와 규칙이 다릅니다. |
 | 웹 전용 | 수치 편집 서랍, URL 옵션(`?mode`, `?seed`), 자동화용 `window.magicBattle` 훅은 디버그 도구로만 추가했습니다. 게임 규칙·카드·시스템 추가는 없습니다. |
 
 ---

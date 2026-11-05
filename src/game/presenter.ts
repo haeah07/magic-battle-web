@@ -34,6 +34,7 @@ export class BattlePresenter {
 
   private colorOf(p: RevealedPlay): Color {
     const def = this.content.getCard(p.cardId);
+    if (p.isCharge) return MANA_COLOR;
     if (!def || def.isPass) return C(0.6, 0.62, 0.66);
     if (def.id === 'lightning') return C(1, 0.92, 0.45);
     return this.lib.elementColor(def.element);
@@ -66,6 +67,7 @@ export class BattlePresenter {
     await this.flip(co, r);
     for (const s of [PlayerSlot.P1, PlayerSlot.P2]) {
       const play = playOf(r, s);
+      if (play && play.isCharge) { this.ui.floating.spawn(this.ui.slot(s).rt, v2(0, 175), `충전 +${play.chargeMp ?? 0} MP`, MANA_COLOR, 30, 1.6 / this.speed); continue; }
       if (!play || play.isPass || play.extraMp <= 0) continue;
       this.ui.floating.spawn(this.ui.slot(s).rt, v2(0, 175), `MP 투자 +${play.extraMp} → 필드 +${play.afterHit?.investGain ?? 0}`, MANA_COLOR, 24, 1.6 / this.speed);
     }
@@ -81,14 +83,24 @@ export class BattlePresenter {
       else this.co.start(c => this.ui.vfx.fly(c, this.colorOf(play), this.slotPos(s), this.corePos, 0.45, 38, false));
     }
     await this.wait(co, 0.45);
-    this.ui.vfx.burst(this.corePos, lerpColor(this.colorOf(r.p1), this.colorOf(r.p2), 0.5), 300, VFX.clash);
-    if (VFX.clash > 0) this.ui.circle.pulseOnce(WHITE);
-    this.ui.shakeScreen(9 * VFX.clash, 0.25);
+    const charges = (r.p1.isCharge ? 1 : 0) + (r.p2.isCharge ? 1 : 0);
+    if (charges === 0) {
+      this.ui.vfx.burst(this.corePos, lerpColor(this.colorOf(r.p1), this.colorOf(r.p2), 0.5), 300, VFX.clash);
+      if (VFX.clash > 0) this.ui.circle.pulseOnce(WHITE);
+      this.ui.shakeScreen(9 * VFX.clash, 0.25);
+    }
 
     const o = r.outcome;
     let title: string, sub: string;
     let accent = th.accentColor;
-    switch (o.result) {
+    if (charges === 2) { title = '양쪽 충전'; sub = '공격 없음 · 양쪽 MP +2'; accent = MANA_COLOR; }
+    else if (charges === 1) {
+      const attacker = r.p1.isCharge ? PlayerSlot.P2 : PlayerSlot.P1;
+      const ae = this.content.getCard(playOf(r, attacker).cardId);
+      title = ae && !ae.isPass ? `${this.lib.elementLabel(ae.element)} ▶ 직접 공격` : '충전';
+      sub = `${slotLabel(other(attacker))} 충전 +2 MP · 상성 판정 없음`;
+      accent = this.lib.playerColor(attacker);
+    } else switch (o.result) {
       case AttackResult.LightDark:
         title = '빛 vs 어둠';
         sub = '빛만 공격 성공 · 어둠은 자기 피해';

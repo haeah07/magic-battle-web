@@ -10,10 +10,10 @@ import { ArenaView, BackgroundView, FieldCircleView } from '../vfx/arena';
 import { FieldEnvironmentView } from '../vfx/environment';
 import { SpellVfx } from '../vfx/spellVfx';
 import { emph, focus } from '../vfx/focus';
-import { CardView } from './cardView';
+import { CardView, MANA_COLOR } from './cardView';
 import { C } from './color';
 import { addUpdate, CoOwner, Img, RT, Time, Txt, v2 } from './engine';
-import { makeImage, makeText, rect, rtOf } from './factory';
+import { Button, buttonFx, makeButton, makeImage, makeOutline, makeText, rect, rtOf } from './factory';
 import { HandView } from './handView';
 import { ActionBar, BannerView, BattleLog, FieldHud, FloatingTextLayer, InvestPanel, MatchupHint, PlayerHud, ResultStrip, TopBar } from './hud';
 import { DebugPanel, GameOverOverlay, HandoffOverlay, InfoPanel, MatchupPanel } from './overlays';
@@ -51,6 +51,8 @@ export class BattleScreen {
   home = PlayerSlot.P1;
 
   private battlefield: RT;
+  private chargeBtn: Button; private chargeSub: Txt; private chargeRing: Img;
+  onCharge: (() => void)[] = [];
   private blocker: Img;
   private swapCo = new CoOwner();
   private floorAngle = 0;
@@ -95,6 +97,16 @@ export class BattleScreen {
     this.invest.rt.place(v2(0.5, 0.5), v2(LAYOUT.homeSlot.x + LAYOUT.investOffset.x, LAYOUT.homeSlot.y + LAYOUT.investOffset.y), InvestPanel.PanelSize, v2(0.5, 1));
     this.actionBar = new ActionBar(root, lib);
     this.actionBar.rt.place(v2(1, 0), v2(-LAYOUT.margin, LAYOUT.margin - 6), ActionBar.PanelSize, v2(1, 0));
+    // 실험 '충전': 카드와 같은 무게의 행동 버튼 (제출 버튼 위)
+    this.chargeBtn = makeButton('Charge', root, '충전 +2 MP', () => this.onCharge.forEach(f => f()), C(0.2, 0.42, 0.75, 0.92), 22);
+    this.chargeBtn.rt.place(v2(1, 0), v2(-LAYOUT.margin - ActionBar.PanelSize.x / 2, LAYOUT.margin + ActionBar.PanelSize.y + 12), v2(260, 66), v2(0.5, 0));
+    rtOf(this.chargeBtn.label!).stretch(8, 8, 6, 22);
+    this.chargeSub = makeText('Sub', this.chargeBtn.rt, '이번 턴 공격하지 않습니다', 14, C(0.82, 0.9, 1, 0.85), 'MiddleCenter');
+    rtOf(this.chargeSub).stretch(8, 8, 40, 6);
+    this.chargeSub.wrap = false;
+    this.chargeRing = makeOutline(this.chargeBtn.rt, MANA_COLOR, 14, 3);
+    buttonFx(this.chargeBtn);
+    this.chargeBtn.rt.setActive(false);
 
     const handRoot = rect('HandArea', root).place(v2(0.5, 0), v2(0, LAYOUT.handCenterFromBottom), v2(LAYOUT.handWidth, CardView.Size.y));
     handRoot.setScale(LAYOUT.handScale, LAYOUT.handScale);
@@ -124,6 +136,14 @@ export class BattleScreen {
     this.setPerspective(PlayerSlot.P1);
     focus.reset('choosing');
     addUpdate({ rt: root, update: dt => this.update(dt) });
+  }
+
+  /** 실험 '충전' 버튼: 보이기 / 선택됨 표시 */
+  setChargeButton(show: boolean, selected: boolean) {
+    this.chargeBtn.rt.setActive(show);
+    this.chargeBtn.img.color = selected ? C(0.35, 0.7, 1, 1) : C(0.2, 0.42, 0.75, 0.92);
+    this.chargeRing.color = C(MANA_COLOR.r, MANA_COLOR.g, MANA_COLOR.b, selected ? 1 : 0.35);
+    this.chargeBtn.setLabel(selected ? '충전 선택됨' : '충전 +2 MP');
   }
 
   /** Field state changes the whole arena: HUD readout, floor circle, environment overlays, colour grading. */

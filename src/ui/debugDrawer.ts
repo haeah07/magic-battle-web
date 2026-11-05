@@ -183,7 +183,7 @@ export class DebugDrawer {
 
     h('실험 기능 (기본 OFF)');
     const opt = ((rules.defaultOptions as Record<string, boolean> | undefined) ?? {});
-    for (const [k, label] of [['elementIdentity', '속성 성향 · 지배 효과'], ['roleCards', '역할 카드 포함']] as const) {
+    for (const [k, label] of [['chargeExperiment', '충전 (카드 대신 MP +2)'], ['elementIdentity', '속성 성향 · 지배 효과']] as const) {
       const c = document.createElement('input'); c.type = 'checkbox';
       c.checked = opt[k] ?? RULES.defaultOptions[k];
       c.addEventListener('change', () => {
@@ -208,18 +208,18 @@ export class DebugDrawer {
     note.textContent = '1 = Unity v6 와 동일 · 0 = 끔. 기본값은 src/config/vfx.ts';
     B.appendChild(note);
 
-    h('카드 (src/data/cards.ts)  코스트 / ATK / DEF / 필드');
+    h('카드 (src/data/cards.ts)  코스트 / ATK / 필드');
     const table = document.createElement('table');
     for (const c of CARDS) {
       const tr = document.createElement('tr');
       const name = document.createElement('td'); name.textContent = c.name; name.title = c.id; tr.appendChild(name);
       const o = (d.data.cards![c.id] ??= {});
-      const cell = (key: 'cost' | 'atk' | 'def' | 'gain', base: number) => {
+      const cell = (key: 'cost' | 'atk' | 'gain', base: number) => {
         const td = document.createElement('td');
         td.appendChild(num(o[key] ?? base, base, 1, v => { if (v === undefined) delete o[key]; else o[key] = v; }));
         tr.appendChild(td);
       };
-      cell('cost', c.cost); cell('atk', c.atk); cell('def', c.def); cell('gain', c.gain);
+      cell('cost', c.cost); cell('atk', c.atk); cell('gain', c.gain);
       table.appendChild(tr);
     }
     B.appendChild(table);
