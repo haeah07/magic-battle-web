@@ -188,7 +188,6 @@ export class MatchupPanel {
 // ============================================================================ DebugPanel (디버그 · 테스트 규칙)
 type ToggleKey = 'chargeExperiment' | 'matchupStatBonus' | 'resonance' | 'hybrid' | 'unstable' | 'suppression' | 'elementIdentity' | 'roleCards' | 'testCards';
 const RULES: [ToggleKey, string, string][] = [
-  ['chargeExperiment', '충전', '카드 대신 충전 (+2 MP, 이번 턴 공격 안 함) (새 게임)'],
   ['matchupStatBonus', '상성 수치 보정 (구 규칙)', '우위 ATK +2 / 열세 ATK -1 추가 · 빛·어둠 제외'],
   ['resonance', '공명 Lv1~3', '같은 속성 필드가 쌓이면 해당 카드 강화'],
   ['hybrid', '혼합 필드 효과', '상위 두 속성 조합 효과'],
@@ -205,12 +204,11 @@ export class DebugPanel {
   onSameSeed: (() => void)[] = [];
   onSpeed: (() => void)[] = [];
   onHandoff: (() => void)[] = [];
-  onPerspective: (() => void)[] = [];
   onEditValues: (() => void)[] = [];
   private options: TestRuleOptions | null = null;
   private toggles: { key: ToggleKey; label: string; text: RichTxt }[] = [];
   private info!: Txt;
-  private speed!: Button; private handoff!: Button; private perspective!: Button; private auto!: Button;
+  private speed!: Button; private handoff!: Button; private auto!: Button;
 
   constructor(parent: RT, _lib: VisualLibrary) {
     const m = makeModal('DebugPanel', parent, v2(0, 0.5), v2(24, 0), v2(1180, 700), '디버그 · 테스트 규칙', () => this.hide(), false);
@@ -247,7 +245,6 @@ export class DebugPanel {
     row('같은 시드로 새 게임', fire(this.onSameSeed));
     this.speed = row('연출 속도', fire(this.onSpeed));
     this.handoff = row('화면 넘기기', fire(this.onHandoff));
-    this.perspective = row('시점', fire(this.onPerspective));
     // web: numeric rule / card / VFX editing lives in a compact side drawer (no rebuild needed)
     row('수치 편집 (HP·MP·코스트·배율·감쇠·공명·VFX)', fire(this.onEditValues));
     this.info = makeText('Info', body, '', 15, C(0.78, 0.82, 0.88), 'UpperLeft');
@@ -261,7 +258,7 @@ export class DebugPanel {
     for (const f of this.onOptionsChanged) f(o);
   }
 
-  render(options: TestRuleOptions, defaults: TestRuleOptions, speed: number, handoff: boolean, perspectiveFollowsTurn: boolean, autoPlaying: boolean, info: string | null) {
+  render(options: TestRuleOptions, defaults: TestRuleOptions, speed: number, handoff: boolean, autoPlaying: boolean, info: string | null) {
     this.options = cloneOptions(options);
     const th = THEME;
     for (const t of this.toggles) {
@@ -270,7 +267,6 @@ export class DebugPanel {
     }
     this.speed.setLabel(`연출 속도  x${+speed.toFixed(2)}`);
     this.handoff.setLabel(`화면 넘기기 표시  ${handoff ? 'ON' : 'OFF'}`);
-    this.perspective.setLabel(perspectiveFollowsTurn ? '시점: 현재 플레이어 (온라인 미리보기)' : '시점: P1 고정');
     this.auto.setLabel(autoPlaying ? '자동 진행 중지' : '자동 진행 (봇 vs 봇)');
     if (info !== null) this.info.text = info;
   }

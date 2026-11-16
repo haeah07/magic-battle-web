@@ -27,11 +27,11 @@ function plane(name: string, parent: RT, pos: V2, tilt = FLOOR_TILT) {
 export class ArenaView {
   readonly rt: RT;
   private floor: Img; private floorTint: Img; private floorGlow: Img; private floorRim: Img; private edgeMist: Img; private backFog: Img;
-  private laneHome!: Img; private laneAway!: Img; private laneAxis!: Img;
-  private padHome: Img; private padAway: Img; private padHomeGlow: Img; private padAwayGlow: Img;
+  private laneP1!: Img; private laneP2!: Img; private laneAxis!: Img;
+  private padP1: Img; private padP2: Img; private padP1Glow: Img; private padP2Glow: Img;
   private flames: Img[] = []; private wallTorches: Img[] = []; private floorLights: Img[] = []; private flow: Img[] = []; private flowPath: V2[] = [];
   private bright = C(0.3, 0.42, 0.55); private target = C(0.3, 0.42, 0.55); private intensity = 0; private targetIntensity = 0; private t = 0;
-  private homeColor = WHITE; private awayColor = WHITE;
+  private p1Color = WHITE; private p2Color = WHITE;
 
   constructor(parent: RT, private lib: VisualLibrary) {
     this.rt = rect('Arena', parent).stretch();
@@ -67,22 +67,22 @@ export class ArenaView {
     this.edgeMist.rt.place(v2(0.5, 0.5), v2(0, 0), v2(size.x * 1.12, size.x * 1.12));
 
     // mana lanes: my tower → my card → clash → enemy card → enemy tower
-    const homeSlotBase = add(LAYOUT.homeSlot, v2(0, -90)), awaySlotBase = add(LAYOUT.awaySlot, v2(0, -80));
-    const homeTower = add(LAYOUT.homeTower, v2(60, 26)), awayTower = add(LAYOUT.awayTower, v2(-50, 22));
-    this.laneHome = this.lane('LaneHome', homeTower, homeSlotBase);
-    this.laneAway = this.lane('LaneAway', awaySlotBase, awayTower);
-    this.laneAxis = this.lane('LaneAxis', homeSlotBase, awaySlotBase);
-    this.flowPath = [homeTower, homeSlotBase, awaySlotBase, awayTower];
+    const p1SlotBase = add(LAYOUT.p1Slot, v2(0, -90)), p2SlotBase = add(LAYOUT.p2Slot, v2(0, -90));
+    const p1Tower = add(LAYOUT.p1Tower, v2(60, 26)), p2Tower = add(LAYOUT.p2Tower, v2(-60, 26));
+    this.laneP1 = this.lane('LaneP1', p1Tower, p1SlotBase);
+    this.laneP2 = this.lane('LaneP2', p2SlotBase, p2Tower);
+    this.laneAxis = this.lane('LaneAxis', p1SlotBase, p2SlotBase);
+    this.flowPath = [p1Tower, p1SlotBase, p2SlotBase, p2Tower];
     for (let i = 0; i < 12; i++) {
       const m = makeImage('LaneMote' + i, this.rt, C(0, 0, 0, 0), SF.glow(64));
       m.rt.place(v2(0.5, 0.5), v2(0, 0), v2(12, 12));
       this.flow.push(m);
     }
     const pad = art.arena('tower_pad');
-    this.padHomeGlow = this.pad('PadHomeGlow', add(LAYOUT.homeTower, v2(0, 26)), 420, SF.softBlob());
-    this.padHome = this.pad('PadHome', add(LAYOUT.homeTower, v2(0, 26)), 340, pad);
-    this.padAwayGlow = this.pad('PadAwayGlow', add(LAYOUT.awayTower, v2(0, 22)), 360, SF.softBlob());
-    this.padAway = this.pad('PadAway', add(LAYOUT.awayTower, v2(0, 22)), 290, pad);
+    this.padP1Glow = this.pad('PadP1Glow', add(LAYOUT.p1Tower, v2(0, 26)), 420, SF.softBlob());
+    this.padP1 = this.pad('PadP1', add(LAYOUT.p1Tower, v2(0, 26)), 340, pad);
+    this.padP2Glow = this.pad('PadP2Glow', add(LAYOUT.p2Tower, v2(0, 26)), 420, SF.softBlob());
+    this.padP2 = this.pad('PadP2', add(LAYOUT.p2Tower, v2(0, 26)), 340, pad);
     this.brazier('BrazierTL', v2(-560, 220), 0.75);
     this.brazier('BrazierTR', v2(560, 220), 0.75);
     addUpdate({ rt: this.rt, update: dt => this.update(dt) });
@@ -124,28 +124,20 @@ export class ArenaView {
     this.flames.push(glow, flame, core);
   }
 
-  /**
-   * Turn swap: rotate the floor art (degrees, negative = clockwise, same direction as the towers' orbit)
-   * and fade the side-coloured lanes/pads (0..1) so they can switch colours while hidden.
-   */
-  setTurn(deg: number, fade: number) {
-    this.floor.rt.rotation = deg;
-    const a = 1 - Math.max(0, Math.min(1, fade));
-    for (const i of [this.laneHome, this.laneAway, this.laneAxis, this.padHome, this.padAway, this.padHomeGlow, this.padAwayGlow]) i.rt.groupAlpha = a;
-  }
-  setPerspective(home: Color, away: Color) {
-    this.homeColor = home; this.awayColor = away;
-    this.laneHome.color = C(home.r, home.g, home.b, 0.13);
-    (this.laneHome as any).core.color = C(home.r, home.g, home.b, 0.3);
-    this.laneAway.color = C(away.r, away.g, away.b, 0.13);
-    (this.laneAway as any).core.color = C(away.r, away.g, away.b, 0.3);
-    const mix = lerpColor(home, away, 0.5);
+  /** P1 = 왼쪽 팀 색, P2 = 오른쪽 팀 색 (고정 배치) */
+  setTeamColors(p1: Color, p2: Color) {
+    this.p1Color = p1; this.p2Color = p2;
+    this.laneP1.color = C(p1.r, p1.g, p1.b, 0.13);
+    (this.laneP1 as any).core.color = C(p1.r, p1.g, p1.b, 0.3);
+    this.laneP2.color = C(p2.r, p2.g, p2.b, 0.13);
+    (this.laneP2 as any).core.color = C(p2.r, p2.g, p2.b, 0.3);
+    const mix = lerpColor(p1, p2, 0.5);
     this.laneAxis.color = C(mix.r, mix.g, mix.b, 0.08);
     (this.laneAxis as any).core.color = C(1, 0.92, 0.75, 0.12);
-    this.padHome.color = C(home.r, home.g, home.b, 0.55);
-    this.padHomeGlow.color = C(home.r, home.g, home.b, 0.22);
-    this.padAway.color = C(away.r, away.g, away.b, 0.55);
-    this.padAwayGlow.color = C(away.r, away.g, away.b, 0.22);
+    this.padP1.color = C(p1.r, p1.g, p1.b, 0.55);
+    this.padP1Glow.color = C(p1.r, p1.g, p1.b, 0.22);
+    this.padP2.color = C(p2.r, p2.g, p2.b, 0.55);
+    this.padP2Glow.color = C(p2.r, p2.g, p2.b, 0.22);
   }
   apply(theme: FieldTheme) { this.target = theme.bright; this.targetIntensity = theme.intensity; }
 
@@ -173,11 +165,11 @@ export class ArenaView {
       const f = seg - si;
       const pos = v2(p[si].x + (p[si + 1].x - p[si].x) * f, p[si].y + (p[si + 1].y - p[si].y) * f);
       m.rt.anchoredPosition = v2(pos.x + Math.sin(T * 2 + i) * 6, pos.y + Math.cos(T * 1.7 + i) * 4);
-      const c = si === 0 ? this.homeColor : si === 2 ? this.awayColor : lerpColor(this.homeColor, this.awayColor, seg / (p.length - 1));
+      const c = si === 0 ? this.p1Color : si === 2 ? this.p2Color : lerpColor(this.p1Color, this.p2Color, seg / (p.length - 1));
       m.color = C(Math.min(1, c.r + 0.3), Math.min(1, c.g + 0.3), Math.min(1, c.b + 0.3), 0.35 * Math.sin((fk * Math.PI * 3) % Math.PI) * A);
     });
-    this.padHome.rt.rotation = T * 8;
-    this.padAway.rt.rotation = -T * 8;
+    this.padP1.rt.rotation = T * 8;
+    this.padP2.rt.rotation = -T * 8;
     this.flames.forEach((f, i) => {
       const flick = 0.85 + 0.15 * Math.sin(T * (9 + i) + i * 1.7) * Math.sin(T * 5.3 + i);
       f.rt.setScale(1 + 0.05 * Math.sin(T * 7 + i), flick);
@@ -195,8 +187,6 @@ export class FieldCircleView {
   private glow: Img; private base: Img; private runes: Img; private star: Img; private outer: Img; private pulse: Img; private pillar: Img; private pillarCore: Img;
   private motes: Mote[] = [];
   private colA = C(0.55, 0.65, 0.8); private colB = C(0.55, 0.65, 0.8); private tA = C(0.55, 0.65, 0.8); private tB = C(0.55, 0.65, 0.8);
-  /** turn-swap rotation offset (degrees), shared with the floor and the towers' orbit */
-  turnAngle = 0;
   private lv = 0; private targetLevel = 0; private unstable = false; private t = 0; private spin = 0; private pulseT = 1; private pulseColor = WHITE;
   levelNow = 0;
 
@@ -256,7 +246,7 @@ export class FieldCircleView {
     const bright = (c: Color, a: number) => C(Math.min(1, c.r * 0.7 + 0.3), Math.min(1, c.g * 0.7 + 0.3), Math.min(1, c.b * 0.7 + 0.3), clamp01(a * flicker));
     this.glow.color = C(mix.r, mix.g, mix.b, (0.05 + 0.22 * act * act + idle) * flicker * F);
     this.base.color = bright(this.colA, 0.3 + 0.45 * act + 0.12 * beat * act + idle);
-    const ta = this.turnAngle;
+    const ta = 0; // 고정 배치: 턴 교대 회전 없음
     this.base.rt.rotation = this.spin + ta;
     this.outer.color = bright(this.colB, (0.06 + 0.34 * act) * F);
     this.outer.rt.rotation = -this.spin * 0.4 + ta;

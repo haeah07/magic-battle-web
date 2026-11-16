@@ -1,4 +1,4 @@
-// 충전 (디버그 토글, 웹 플레이테스트 기본 ON) — v9 베이스라인 카드 기준
+// 충전: 최신 규칙(Unity Final)에는 없어서 기본 OFF. 코드는 남아 있으므로 켰을 때의 동작만 회귀 검증한다 — v9 베이스라인 카드 기준
 import { describe, expect, it } from 'vitest';
 import { buildContent } from '../src/data';
 import { AttackResult, cardCommand, MatchAuthority, MatchPhase, MatchupStanding, PlayerSlot, TestRuleOptions, v6Baseline } from '../src/core';
@@ -16,9 +16,16 @@ function match(opts: TestRuleOptions = on) {
 const uid = (a: MatchAuthority, s: PlayerSlot, i = 0) => a.getPrivateView(s).hand[i].uid;
 const next = (a: MatchAuthority) => { a.readyForNextRound(P1); a.readyForNextRound(P2); };
 
-describe('충전 + 고코스트 실험', () => {
-  it('default rules have charge ON; the deck does not depend on the toggle', () => {
-    expect(content.rules.defaultOptions.chargeExperiment).toBe(true);
+describe('충전 기본 OFF', () => {
+  it('기본 규칙으로는 충전 명령이 거부된다', () => {
+    const a = match(content.rules.defaultOptions);
+    expect(a.submit(chargeCommand(P1)).ok).toBe(false);
+  });
+});
+
+describe('충전 + 고코스트 실험 (옵션을 켰을 때)', () => {
+  it('default rules have charge OFF; the deck does not depend on the toggle', () => {
+    expect(content.rules.defaultOptions.chargeExperiment).toBe(false);
     expect(match().totalCardsFor(P1)).toBe(21);
     expect(match(v6Baseline()).totalCardsFor(P1)).toBe(21);
   });

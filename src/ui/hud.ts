@@ -116,7 +116,7 @@ export class PlayerHud {
   private update(dt: number) {
     this.t += dt;
     const pc = this.lib.playerColor(this.slot);
-    const a = (this.highlight ? 0.16 + 0.08 * Math.sin(this.t * 3) : this.submitted ? 0.07 : 0) * VFX.choosing;
+    const a = (this.highlight ? 0.3 + 0.1 * Math.sin(this.t * 3) : this.submitted ? 0.07 : 0) * VFX.choosing;
     this.turnGlow.color = C(pc.r, pc.g, pc.b, lerp(this.turnGlow.color.a, a, 0.12));
     this.statusDot.rt.rotation = this.highlight ? this.t * 120 : 0;
     this.gemGlow.color = C(0.35, 0.5, 1, (0.25 + 0.1 * Math.sin(this.t * 2)) * VFX.ambient);

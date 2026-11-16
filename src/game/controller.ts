@@ -28,7 +28,7 @@ export const newSeed = () => (Date.now() ^ Math.imul(++seedCounter, 0x2545f491))
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const nameOf = (s: PlayerSlot) => (s === PlayerSlot.P1 ? 'PLAYER 1' : 'PLAYER 2');
 
-export interface ControllerSettings { speed: number; handoff: boolean; perspectiveFollowsTurn: boolean }
+export interface ControllerSettings { speed: number; handoff: boolean }
 
 export class BattleController {
   private content: GameContent;
@@ -49,7 +49,6 @@ export class BattleController {
   private seed = 0;
   speed = 1;
   handoffEnabled = THEME.showHandoffScreen;
-  perspectiveFollowsTurn = true;
   private autoPlay = false;
   private submitting = false;
   private debugInfo = '';
@@ -60,7 +59,7 @@ export class BattleController {
   private toastCo = new CoOwner();
   /** called when the debug "수치 편집" button is pressed */
   onEditValues: (() => void)[] = [];
-  /** called when the speed/handoff/perspective settings change (persisted by the scene) */
+  /** called when the speed/handoff settings change (persisted by the scene) */
   onSettingsChanged: ((s: ControllerSettings) => void)[] = [];
 
   get state(): PublicMatchState { return this.client.publicState; }
@@ -72,7 +71,6 @@ export class BattleController {
     this.presenter = new BattlePresenter(ui, lib);
     if (settings?.speed) this.speed = settings.speed;
     if (settings?.handoff !== undefined) this.handoffEnabled = settings.handoff;
-    if (settings?.perspectiveFollowsTurn !== undefined) this.perspectiveFollowsTurn = settings.perspectiveFollowsTurn;
     ui.topBar.setDebugVisible(showDebugButton);
 
     client.onPublicStateChanged.push(s => this.onPublicStateChanged(s));
@@ -96,13 +94,6 @@ export class BattleController {
     ui.debug.onSameSeed.push(() => this.startMatch(this.seed));
     ui.debug.onSpeed.push(() => { this.speed = this.speed >= 4 ? 0.5 : this.speed * 2; this.settingsChanged(); this.renderDebug(); });
     ui.debug.onHandoff.push(() => { this.handoffEnabled = !this.handoffEnabled; this.settingsChanged(); this.renderDebug(); });
-    ui.debug.onPerspective.push(() => {
-      this.perspectiveFollowsTurn = !this.perspectiveFollowsTurn;
-      this.setViewer(this.perspectiveFollowsTurn ? this.active : this.client.controlledSlots[0]);
-      this.settingsChanged();
-      this.renderAll();
-      this.renderDebug();
-    });
     ui.debug.onEditValues.push(() => this.onEditValues.forEach(f => f()));
 
     for (const s of [PlayerSlot.P1, PlayerSlot.P2]) {
@@ -111,7 +102,7 @@ export class BattleController {
       slotView.card.onClicked.push(() => this.onSlotClicked(s));
       slotView.card.drag = {
         dragLayer: ui.dragLayer,
-        canDrag: () => this.canEdit(s) && this.selection.has(s) && !this.ui.swapping,
+        canDrag: () => this.canEdit(s) && this.selection.has(s),
         dropped: (_c, pos) => this.onSlotCardDropped(s, pos),
       };
     }
@@ -120,14 +111,15 @@ export class BattleController {
   }
 
   private settingsChanged() {
-    const s = { speed: this.speed, handoff: this.handoffEnabled, perspectiveFollowsTurn: this.perspectiveFollowsTurn };
+    const s = { speed: this.speed, handoff: this.handoffEnabled };
     for (const f of this.onSettingsChanged) f(s);
   }
 
-  private setViewer(slot: PlayerSlot, animate = false) {
+  /** 손패를 보여 줄(조작하는) 플레이어. 전장 위치(P1 왼쪽 / P2 오른쪽)는 절대 바뀌지 않는다. */
+  private setViewer(slot: PlayerSlot) {
     if (!this.client.controls(slot)) slot = this.client.controlledSlots[0];
     this.viewer = slot;
-    this.ui.swapPerspective(slot, animate);
+    this.ui.setActing(slot);
   }
 
   startMatch(seed: number) {
@@ -194,7 +186,7 @@ export class BattleController {
     this.extra.set(slot, x);
     return x;
   }
-  private driftToCenter(slot: PlayerSlot) { return slot === this.ui.home ? 0.6 : -0.6; }
+  private driftToCenter(slot: PlayerSlot) { return this.ui.facing(slot) * 0.6; }
 
   private focusElement(): Element | null {
     if (this.hovered && this.hovered.def) return this.hovered.def.element;
@@ -244,7 +236,8 @@ export class BattleController {
       else if (slot === this.active && (this.step === Step.Choosing || this.step === Step.Handoff)) { status = '선택 중'; color = th.accentColor; }
       else { status = '대기'; color = th.mutedTextColor; }
       const highlight = slot === this.active && this.step === Step.Choosing;
-      const role = slot === this.viewer ? '나' : '상대';
+      // 한 화면 2인(핫시트): 지금 고르는 쪽에 '차례' 표시. 1인 시점(봇): 나 / 상대
+      const role = this.sharedScreen ? (highlight ? '차례' : '') : slot === this.viewer ? '나' : '상대';
       this.ui.side(slot).render(p, status, color, highlight, role);
     }
     if (this.step !== Step.Presenting) {
@@ -385,7 +378,7 @@ export class BattleController {
     cv.onHoverExit.push(c => { if (this.hovered === c) this.hovered = null; this.renderHint(); });
     cv.drag = {
       dragLayer: this.ui.dragLayer,
-      canDrag: c => this.canEdit(this.active) && !c.faceDown && !this.ui.swapping,
+      canDrag: c => this.canEdit(this.active) && !c.faceDown,
       dragStarted: () => this.ui.slot(this.active).setDropHighlight(true),
       dragMove: (_c, pos) => this.ui.slot(this.active).setDropHighlight(true, this.ui.slot(this.active).contains(pos)),
       dropped: (c, pos) => this.onHandCardDropped(c, pos),
@@ -451,7 +444,7 @@ export class BattleController {
 
   /** 실험 '충전' 버튼: 현재 선택 카드를 해제하고 충전을 고름 (다시 누르면 취소) */
   toggleCharge() {
-    if (!this.chargeOn || !this.canEdit(this.active) || this.ui.swapping) return;
+    if (!this.chargeOn || !this.canEdit(this.active)) return;
     if (this.charging.has(this.active)) { this.charging.delete(this.active); this.renderAll(); return; }
     this.selection.delete(this.active);
     this.extra.delete(this.active);
@@ -521,8 +514,7 @@ export class BattleController {
       const c = dmg > 0 ? th.negativeColor : th.mutedTextColor;
       return colorize(slotLabel(slot), this.lib.playerColor(slot)) + ' ' + colorize(dmg > 0 ? `-${dmg}` : '0', c);
     };
-    const home = this.viewer;
-    const text = part(home) + '     ' + part(other(home));
+    const text = part(PlayerSlot.P1) + '     ' + part(PlayerSlot.P2);
     const sub = fieldChanged(r) ? `${r.fieldNameBefore} → ${r.fieldNameAfter}` : r.fieldNameAfter;
     this.ui.result.show(text, sub);
   }
@@ -635,7 +627,7 @@ export class BattleController {
 
   private beginTurn(slot: PlayerSlot) {
     this.active = slot;
-    if (this.perspectiveFollowsTurn) this.setViewer(slot, true);
+    this.setViewer(slot);
     this.step = Step.Choosing;
     this.renderAll();
   }
@@ -683,7 +675,7 @@ export class BattleController {
     }
     const first = this.client.controlledSlots[0];
     const info = fieldInfo(this.content, s.field);
-    if (this.handoffEnabled && !this.autoPlay && this.sharedScreen && this.perspectiveFollowsTurn && this.viewer !== first) {
+    if (this.handoffEnabled && !this.autoPlay && this.sharedScreen && this.viewer !== first) {
       this.active = first;
       this.step = Step.Handoff;
       this.renderAll();
@@ -725,7 +717,7 @@ export class BattleController {
   get currentOptions() { return this.state.options; }
 
   renderDebug() {
-    this.ui.debug.render(this.state.options, this.content.rules.defaultOptions, this.speed, this.handoffEnabled, this.perspectiveFollowsTurn, this.autoPlay, this.debugInfo);
+    this.ui.debug.render(this.state.options, this.content.rules.defaultOptions, this.speed, this.handoffEnabled, this.autoPlay, this.debugInfo);
   }
 
   private runSelfTest() {

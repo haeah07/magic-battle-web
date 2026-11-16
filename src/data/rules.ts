@@ -51,7 +51,7 @@ export const RULES: RuleSet = {
   minCardCost: 1,         // 코스트 감소 효과가 있어도 최소 코스트
   maxHand: 5,             // 손패 최대 장수 — 가득 차 있으면 그 라운드 드로우를 건너뜀
 
-  // ── 충전 (디버그 패널에서 ON/OFF) ──
+  // ── 충전 (최신 규칙에서 제거됨 · 기본 OFF, 디버그 UI 에서도 숨김) ──
   chargeMp: 2,           // 충전 시 추가 MP (라운드 회복과 별도, 최대 MP 유지)
 
   // ── 기본 테스트 옵션 (디버그 패널에서 토글) ──
@@ -64,6 +64,6 @@ export const RULES: RuleSet = {
     testCards: false,
     elementIdentity: false, // 실험 기능: 속성 성향 (기본 OFF)
     roleCards: false,        // 실험 기능: 역할 카드 (기본 OFF)
-    chargeExperiment: true,  // 충전 행동 (웹 플레이테스트 기본 ON)
+    chargeExperiment: false, // 충전 행동 — 최신 규칙에는 없음(Unity Final 기준). 코드는 남겨 두되 기본 OFF, 데모에서는 켤 수 없음
   },
 };

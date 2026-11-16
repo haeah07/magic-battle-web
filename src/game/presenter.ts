@@ -126,8 +126,8 @@ export class BattlePresenter {
 
     // only the tower(s) that actually take damage are emphasised
     const hitP1 = o.damageToP1 > 0, hitP2 = o.damageToP2 > 0;
-    const homeIsP1 = this.ui.home === PlayerSlot.P1;
-    focus.setImpact(homeIsP1 ? hitP1 : hitP2, homeIsP1 ? hitP2 : hitP1);
+    const actingIsP1 = this.ui.acting === PlayerSlot.P1; // focus 의 '내 쪽' = 지금 손패를 가진 플레이어
+    focus.setImpact(actingIsP1 ? hitP1 : hitP2, actingIsP1 ? hitP2 : hitP1);
     let hp1 = r.hpBefore[0], hp2 = r.hpBefore[1];
     if (o.isSpecial) {
       const light = o.lightSlot, dark = o.darkSlot;
@@ -218,7 +218,7 @@ export class BattlePresenter {
       for (let t = 0; t < d; t += Time.dt) {
         const k = t / d;
         const off = Math.sin(k * Math.PI) * 34;
-        card.anchoredPosition = v2(0, dir * off);
+        card.anchoredPosition = v2(dir * off, 0); // 좌우 전장: 카드가 중앙(충돌 지점) 쪽으로 가로로 쑥 나감
         card.setScale(1 + 0.05 * Math.sin(k * Math.PI));
         await co.frame();
       }
@@ -247,7 +247,7 @@ export class BattlePresenter {
       const t = termsFromMods(this.content, def, play.stats.mods);
       const card = this.ui.slot(slot).card;
       card.setCost(t.cost);
-      card.setInvestment(play.extraMp, Math.max(play.extraMp, t.maxExtra), play.afterHit?.investGain ?? 0, play.stats, slot === this.ui.home ? 0.6 : -0.6);
+      card.setInvestment(play.extraMp, Math.max(play.extraMp, t.maxExtra), play.afterHit?.investGain ?? 0, play.stats, this.ui.facing(slot) * 0.6);
     }
   }
 }

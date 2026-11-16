@@ -2,14 +2,14 @@
 // 라운드마다 지켜져야 하는 불변식을 확인한다. (예전 Unity v6 기록 재생 테스트를 대체)
 import { describe, expect, it } from 'vitest';
 import { buildContent } from '../src/data';
-import { botChoose, MatchAuthority, MatchOutcome, MatchPhase, PlayerSlot, v6Baseline } from '../src/core';
+import { botChoose, MatchAuthority, MatchOutcome, MatchPhase, PlayerSlot } from '../src/core';
 import { DeterministicRandom } from '../src/core/random';
 
 const content = buildContent();
 const R = content.rules;
 
 function playMatch(seed: number) {
-  const a = new MatchAuthority(content, v6Baseline());
+  const a = new MatchAuthority(content, { ...content.rules.defaultOptions }); // 데모 기본 설정(충전 OFF)
   a.startNewMatch(seed);
   const rng = new DeterministicRandom(seed ^ 0x5f3759df);
   const log: string[] = [];
