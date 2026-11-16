@@ -70,7 +70,7 @@ magic-battle-web/
 │  ├─ scenes/      Phaser 씬 (로딩, 전투)
 │  ├─ ui/          화면 요소 (카드, 손패, 슬롯, 포탑, HUD, 패널) + uGUI 대응 엔진
 │  └─ vfx/         경기장·배경·필드 마법진·환경 오버레이·마법 연출·카드 오라
-├─ tests/          vitest 규칙 테스트 + Unity 경기 기록(fixtures/unity_traces.json)
+├─ tests/          vitest 규칙 테스트 + 현행 규칙 전체 경기 시뮬레이션
 └─ .github/workflows/deploy.yml
 ```
 
@@ -190,6 +190,7 @@ npm test
 ```
 
 - `tests/rules.test.ts` — v9 베이스라인: 21장·7속성 구성, 덱 21장과 7속성 드로우, 상성 49조합(DEF 없이 ATK 그대로 피해), 빛 vs 어둠(빛 5 / 어둠 4 → 어둠 9), 실패 시 피해 0·필드 누적, MP +3 회복과 최대 10, 2~7 코스트 사용, 투자는 필드만, 배율·감소·공명, 게임 종료·봇 40판(손패 ≤ 5, MP ≤ 10).
+- `tests/matchSimulation.test.ts` — 봇 대 봇 60경기를 끝까지 돌려 라운드마다 HP·MP·손패·필드 범위, 피해 정합성, 시드 재현성을 확인합니다. (예전 Unity 기록 재생 테스트를 대체)
 - `tests/chargeExperiment.test.ts` — 충전: 카드 vs 충전, 충전 vs 충전, MP +2, 최대 10, 손패 5장 유지, OFF 시 거부. (Unity 240판 재생 테스트는 v9 에서 규칙이 달라져 제거했습니다.)
 
 게임 안 **디버그 → 규칙 자가 테스트** 는 현재 데이터로 같은 검사를 브라우저에서 돌립니다.
