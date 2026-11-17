@@ -13,18 +13,20 @@ export interface StoredSettings {
   vfx: Partial<Record<VfxKey, number>>;
   speed: number;
   handoff: boolean;
-  perspectiveFollowsTurn: boolean;
   mode: MatchMode;
 }
 
 const KEY = 'magic-battle-web.settings.v1';
-export const DEFAULT_SETTINGS = (): StoredSettings => ({ data: {}, vfx: {}, speed: 1, handoff: true, perspectiveFollowsTurn: true, mode: 'hotseat' });
+export const DEFAULT_SETTINGS = (): StoredSettings => ({ data: {}, vfx: {}, speed: 1, handoff: true, mode: 'hotseat' });
 
 export function loadSettings(): StoredSettings {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT_SETTINGS();
-    return { ...DEFAULT_SETTINGS(), ...JSON.parse(raw) };
+    const s: StoredSettings = { ...DEFAULT_SETTINGS(), ...JSON.parse(raw) };
+    // 충전은 최신 규칙에서 제거됨: 예전에 브라우저에 저장된 '충전 ON' 값이 다시 켜지지 않게 버린다
+    if (s.data?.rules?.defaultOptions) delete s.data.rules.defaultOptions.chargeExperiment;
+    return s;
   } catch { return DEFAULT_SETTINGS(); }
 }
 export function saveSettings(s: StoredSettings) {
@@ -124,7 +126,7 @@ export class DebugDrawer {
     };
     btn('적용 + 새 게임', 'primary', () => this.applyDraft());
     btn('기본값 복원', 'ghost', () => {
-      const keep = { speed: this.draft.speed, handoff: this.draft.handoff, perspectiveFollowsTurn: this.draft.perspectiveFollowsTurn, mode: this.draft.mode };
+      const keep = { speed: this.draft.speed, handoff: this.draft.handoff, mode: this.draft.mode };
       this.draft = { ...DEFAULT_SETTINGS(), ...keep };
       this.build();
     });
@@ -183,7 +185,7 @@ export class DebugDrawer {
 
     h('실험 기능 (기본 OFF)');
     const opt = ((rules.defaultOptions as Record<string, boolean> | undefined) ?? {});
-    for (const [k, label] of [['chargeExperiment', '충전 (카드 대신 MP +2)'], ['elementIdentity', '속성 성향 · 지배 효과']] as const) {
+    for (const [k, label] of [['elementIdentity', '속성 성향 · 지배 효과']] as const) {
       const c = document.createElement('input'); c.type = 'checkbox';
       c.checked = opt[k] ?? RULES.defaultOptions[k];
       c.addEventListener('change', () => {
