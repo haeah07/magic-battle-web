@@ -65,6 +65,8 @@ export class BattlePresenter {
     this.ui.banner.show('동시 공개', '', th.accentColor, 0.8 / this.speed);
     await this.wait(co, 0.15);
     await this.flip(co, r);
+    // 공개 직후: 양쪽 카드에 짧은 에너지 반응 (시선을 중앙으로)
+    for (const s of [PlayerSlot.P1, PlayerSlot.P2]) { const pl = playOf(r, s); if (!pl.isPass) this.ui.vfx.shockwave(this.slotPos(s), this.colorOf(pl), VFX.reveal * 0.7, 380); }
     for (const s of [PlayerSlot.P1, PlayerSlot.P2]) {
       const play = playOf(r, s);
       if (play && play.isCharge) { this.ui.floating.spawn(this.ui.slot(s).rt, v2(0, 175), `충전 +${play.chargeMp ?? 0} MP`, MANA_COLOR, 30, 1.6 / this.speed); continue; }
@@ -86,7 +88,11 @@ export class BattlePresenter {
     const charges = (r.p1.isCharge ? 1 : 0) + (r.p2.isCharge ? 1 : 0);
     if (charges === 0) {
       this.ui.vfx.burst(this.corePos, lerpColor(this.colorOf(r.p1), this.colorOf(r.p2), 0.5), 300, VFX.clash);
-      if (VFX.clash > 0) this.ui.circle.pulseOnce(WHITE);
+      if (VFX.clash > 0) {
+        this.ui.circle.pulseOnce(WHITE);
+        // 충돌 임팩트: 바닥을 따라 퍼지는 충격파 + 빛기둥 (평상시는 조용하다가 이 순간에 집중)
+        this.ui.vfx.shockwave(this.corePos, lerpColor(this.colorOf(r.p1), this.colorOf(r.p2), 0.5), VFX.clash, 1250, true);
+      }
       this.ui.shakeScreen(9 * VFX.clash, 0.25);
     }
 
@@ -206,6 +212,7 @@ export class BattlePresenter {
     tower.playHit(damage);
     tower.setHp(newHp, maxHp, false);
     this.ui.vfx.burst(this.towerPos(slot), C(1, 0.6, 0.45), 200 + damage * 12, VFX.towerHit);
+    this.ui.vfx.shockwave(this.towerPos(slot), C(1, 0.62, 0.45), VFX.towerHit, 520 + damage * 30);
     this.ui.shakeScreen(Math.min(26, 6 + damage * 2) * VFX.towerHit, newHp <= 0 ? 0.6 : 0.3);
     this.ui.floating.spawn(tower.coreRect, v2(0, 90), `-${damage}${note}`, note.length > 0 ? C(0.8, 0.66, 1) : C(1, 0.6, 0.52), note.length > 0 ? 40 : 60);
   }

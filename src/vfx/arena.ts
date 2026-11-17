@@ -11,7 +11,7 @@ import { C, Color, lerpColor, WHITE } from '../ui/color';
 import { addUpdate, Img, RT, V2, v2 } from '../ui/engine';
 import { makeImage, rect } from '../ui/factory';
 import { clamp01, lerp, rand } from '../ui/mathf';
-import { art, SF } from '../ui/sprites';
+import { art, SF, stoneSprite } from '../ui/sprites';
 import { emph, focus } from './focus';
 
 export const FLOOR_TILT = 0.42;
@@ -24,6 +24,12 @@ function plane(name: string, parent: RT, pos: V2, tilt = FLOOR_TILT) {
 }
 
 // ============================================================================ ArenaView
+/** One faction's stronghold set dressing (wall, banners, lamps, dais, mana motes) — tinted with the team colour */
+interface Castle {
+  side: number;
+  banners: Img[]; lamps: Img[]; lampGlows: Img[]; backGlow: Img; rim: Img; daisGlow: Img;
+  motes: { img: Img; ox: number; phase: number; speed: number }[];
+}
 export class ArenaView {
   readonly rt: RT;
   private floor: Img; private floorTint: Img; private floorGlow: Img; private floorRim: Img; private edgeMist: Img; private backFog: Img;
@@ -32,18 +38,22 @@ export class ArenaView {
   private flames: Img[] = []; private wallTorches: Img[] = []; private floorLights: Img[] = []; private flow: Img[] = []; private flowPath: V2[] = [];
   private bright = C(0.3, 0.42, 0.55); private target = C(0.3, 0.42, 0.55); private intensity = 0; private targetIntensity = 0; private t = 0;
   private p1Color = WHITE; private p2Color = WHITE;
+  private castles: Castle[] = [];
 
   constructor(parent: RT, private lib: VisualLibrary) {
     this.rt = rect('Arena', parent).stretch();
-    const L = LAYOUT.floorCenter, size = LAYOUT.floorSize;
+    const L = LAYOUT.floorCenter, size = LAYOUT.arenaSize;
     const wall = rect('BackWall', this.rt).stretch();
-    makeImage('WallShade', wall, C(0.02, 0.025, 0.05, 0.75), SF.verticalGradient()).rt.place(v2(0.5, 0.5), v2(0, 360), v2(2600, 420));
+    // far layer: cold sky glow + gothic skyline silhouette (depth behind the colonnade)
+    makeImage('SkyGlow', wall, C(0.3, 0.34, 0.62, 0.2), SF.softBlob()).rt.place(v2(0.5, 0.5), v2(0, 380), v2(1500, 460));
+    makeImage('Skyline', wall, C(0.1, 0.12, 0.24, 0.8), stoneSprite('skyline')).rt.place(v2(0.5, 0.5), v2(0, 400), v2(1920, 300));
+    makeImage('WallShade', wall, C(0.02, 0.025, 0.05, 0.62), SF.verticalGradient()).rt.place(v2(0.5, 0.5), v2(0, 330), v2(2600, 380));
     const column = art.arena('arena_column');
     for (let i = -5; i <= 5; i++) {
-      const x = i * 190, depth = 1 - Math.abs(i) * 0.04;
-      const dim = 0.62 - Math.abs(i) * 0.035;
+      const x = i * 190, depth = 1 - Math.abs(i) * 0.03;
+      const dim = 0.56 - Math.abs(i) * 0.03;
       const col = makeImage('Column' + (i + 5), wall, C(dim * 0.92, dim * 0.95, dim * 1.1, 0.95), column);
-      col.rt.place(v2(0.5, 0.5), v2(x, 290 - Math.abs(i) * 14), v2(76 * depth, 304 * depth), v2(0.5, 0));
+      col.rt.place(v2(0.5, 0.5), v2(x, 246 - Math.abs(i) * 10), v2(104 * depth, 430 * depth), v2(0.5, 0));
       const torch = makeImage('Torch' + (i + 5), wall, C(1, 0.6, 0.3, 0), SF.glow(64));
       torch.rt.place(v2(0.5, 0.5), v2(x + 95, 430 - Math.abs(i) * 10), v2(90, 90));
       if (i % 2 !== 0 && i < 5) this.wallTorches.push(torch); else torch.rt.setActive(false);
@@ -51,6 +61,13 @@ export class ArenaView {
     makeImage('WallFade', wall, C(0.02, 0.03, 0.05, 0.55), SF.verticalGradient()).rt.place(v2(0.5, 0.5), v2(0, 430), v2(2600, 320));
     this.backFog = makeImage('BackFog', wall, C(0.42, 0.4, 0.65, 0.16), SF.softBlob());
     this.backFog.rt.place(v2(0.5, 0.5), v2(0, 300), v2(2600, 260));
+    // low parapet wall running along the back edge of the courtyard (rises out of the floor)
+    for (const sx of [-512, 512]) makeImage('Parapet', wall, C(0.6, 0.62, 0.8, 0.95), stoneSprite('parapet')).rt.place(v2(0.5, 0.5), v2(sx, 262), v2(1024, 150));
+    makeImage('ParapetShade', wall, C(0.02, 0.025, 0.06, 0.4), SF.verticalGradient()).rt.place(v2(0.5, 0.5), v2(0, 268), v2(2000, 120));
+    // dark outer paving: the lit arena is only the middle of a larger courtyard
+    const outerPlane = plane('OuterGround', wall, v2(0, -110), 0.36);
+    makeImage('OuterGround', outerPlane, C(0.27, 0.29, 0.4), art.arena('arena_floor')).rt.place(v2(0.5, 0.5), v2(0, 0), v2(1960, 1960));
+    makeImage('OuterShade', outerPlane, C(0, 0, 0, 0.35), SF.softBlob()).rt.place(v2(0.5, 0.5), v2(0, 520), v2(1900, 1100));
 
     const floorPlane = plane('FloorPlane', this.rt, L);
     this.floorGlow = makeImage('FloorGlow', floorPlane, C(0.3, 0.45, 0.7, 0.2), SF.softBlob());
@@ -65,6 +82,9 @@ export class ArenaView {
     this.floorRim.rt.place(v2(0.5, 0.5), v2(0, 0), v2(size.x * 0.995, size.x * 0.995));
     this.edgeMist = makeImage('EdgeMist', floorPlane, C(0.45, 0.45, 0.7, 0.1), SF.ring(256, 0.16));
     this.edgeMist.rt.place(v2(0.5, 0.5), v2(0, 0), v2(size.x * 1.12, size.x * 1.12));
+
+    this.buildCastle(-1);
+    this.buildCastle(1);
 
     // mana lanes: my tower → my card → clash → enemy card → enemy tower
     const p1SlotBase = add(LAYOUT.p1Slot, v2(0, -90)), p2SlotBase = add(LAYOUT.p2Slot, v2(0, -90));
@@ -86,6 +106,54 @@ export class ArenaView {
     this.brazier('BrazierTL', v2(-560, 220), 0.75);
     this.brazier('BrazierTR', v2(560, 220), 0.75);
     addUpdate({ rt: this.rt, update: dt => this.update(dt) });
+  }
+
+  /** P1 (side -1, left) / P2 (side +1, right): back wall, pillars with lamps, banners, stepped dais, mana motes */
+  private buildCastle(side: number) {
+    const x = side * 650;               // tower centre
+    const backGlow = makeImage('CastleGlow', this.rt, C(1, 1, 1, 0), SF.softBlob());
+    backGlow.rt.place(v2(0.5, 0.5), v2(x * 1.04, 70), v2(820, 640));
+    const wallImg = makeImage('CastleWall', this.rt, C(0.72, 0.74, 0.92, 0.98), stoneSprite('wall'));
+    wallImg.rt.place(v2(0.5, 0.5), v2(side * 700, -110), v2(540, 360), v2(0.5, 0));
+    makeImage('CastleWallShade', this.rt, C(0.02, 0.03, 0.07, 0.5), SF.verticalGradient()).rt.place(v2(0.5, 0.5), v2(side * 700, 80), v2(540, 300));
+    const column = art.arena('arena_column');
+    const lamps: Img[] = [], lampGlows: Img[] = [];
+    for (const px of [side * 430, side * 915]) {
+      const col = makeImage('CastlePillar', this.rt, C(0.46, 0.48, 0.6, 1), column);
+      col.rt.place(v2(0.5, 0.5), v2(px, -120), v2(84, 400), v2(0.5, 0));
+      const glow = makeImage('LampGlow', this.rt, C(1, 1, 1, 0), SF.glow(128));
+      glow.rt.place(v2(0.5, 0.5), v2(px, 300), v2(190, 190));
+      const lamp = makeImage('Lamp', this.rt, C(1, 1, 1, 0.9), SF.crystal());
+      lamp.rt.place(v2(0.5, 0.5), v2(px, 292), v2(30, 46));
+      lamps.push(lamp); lampGlows.push(glow);
+    }
+    const banners: Img[] = [];
+    for (const bx of [side * 845, side * 485]) {
+      const b = makeImage('Banner', this.rt, C(1, 1, 1, 0.92), stoneSprite('banner'));
+      b.rt.place(v2(0.5, 0.5), v2(bx, 238), v2(76, 228), v2(0.5, 1));
+      banners.push(b);
+    }
+    // stepped dais under the tower pad (three stacked stone discs, raised a little each)
+    const floorTex = art.arena('arena_floor');
+    const steps: [number, number, number][] = [[800, -138, 0.3], [680, -131, 0.4], [560, -124, 0.5]];
+    for (const [sz, y, k] of steps) {
+      const pl = plane('Dais', this.rt, v2(x, y), 0.36);
+      makeImage('DaisShadow', pl, C(0, 0, 0, 0.45), SF.softBlob()).rt.place(v2(0.5, 0.5), v2(0, -sz * 0.04), v2(sz * 1.12, sz * 1.12));
+      makeImage('DaisStep', pl, C(k, k * 1.03, k * 1.3), floorTex).rt.place(v2(0.5, 0.5), v2(0, 0), v2(sz, sz));
+    }
+    const rimPlane = plane('DaisRim', this.rt, v2(x, -131), 0.36);
+    const rim = makeImage('DaisRim', rimPlane, C(1, 1, 1, 0.4), SF.ring(512, 0.006));
+    rim.rt.place(v2(0.5, 0.5), v2(0, 0), v2(680, 680));
+    const glowPlane = plane('DaisGlow', this.rt, v2(x, -120), 0.36);
+    const daisGlow = makeImage('DaisGlow', glowPlane, C(1, 1, 1, 0), SF.softBlob());
+    daisGlow.rt.place(v2(0.5, 0.5), v2(0, 0), v2(760, 760));
+    const motes: Castle['motes'] = [];
+    for (let i = 0; i < 9; i++) {
+      const m = makeImage('CastleMote', this.rt, C(1, 1, 1, 0), SF.glow(64));
+      m.rt.place(v2(0.5, 0.5), v2(x, -100), v2(14, 14));
+      motes.push({ img: m, ox: (i / 8 - 0.5) * 340 + ((i * 37) % 11 - 5) * 4, phase: (i * 0.137) % 1, speed: 0.07 + (i % 4) * 0.018 });
+    }
+    this.castles.push({ side, banners, lamps, lampGlows, backGlow, rim, daisGlow, motes });
   }
 
   private lane(name: string, from: V2, to: V2) {
@@ -127,10 +195,10 @@ export class ArenaView {
   /** P1 = 왼쪽 팀 색, P2 = 오른쪽 팀 색 (고정 배치) */
   setTeamColors(p1: Color, p2: Color) {
     this.p1Color = p1; this.p2Color = p2;
-    this.laneP1.color = C(p1.r, p1.g, p1.b, 0.13);
-    (this.laneP1 as any).core.color = C(p1.r, p1.g, p1.b, 0.3);
-    this.laneP2.color = C(p2.r, p2.g, p2.b, 0.13);
-    (this.laneP2 as any).core.color = C(p2.r, p2.g, p2.b, 0.3);
+    this.laneP1.color = C(p1.r, p1.g, p1.b, 0.18);
+    (this.laneP1 as any).core.color = C(p1.r, p1.g, p1.b, 0.4);
+    this.laneP2.color = C(p2.r, p2.g, p2.b, 0.18);
+    (this.laneP2 as any).core.color = C(p2.r, p2.g, p2.b, 0.4);
     const mix = lerpColor(p1, p2, 0.5);
     this.laneAxis.color = C(mix.r, mix.g, mix.b, 0.08);
     (this.laneAxis as any).core.color = C(1, 0.92, 0.75, 0.12);
@@ -138,6 +206,12 @@ export class ArenaView {
     this.padP1Glow.color = C(p1.r, p1.g, p1.b, 0.22);
     this.padP2.color = C(p2.r, p2.g, p2.b, 0.55);
     this.padP2Glow.color = C(p2.r, p2.g, p2.b, 0.22);
+    for (const c of this.castles) {
+      const t = c.side < 0 ? p1 : p2;
+      c.banners.forEach(b => (b.color = C(t.r * 0.62, t.g * 0.62, t.b * 0.66, 0.95)));
+      c.lamps.forEach(l => (l.color = C(Math.min(1, t.r + 0.3), Math.min(1, t.g + 0.3), Math.min(1, t.b + 0.3), 0.9)));
+      c.rim.color = C(t.r, t.g, t.b, 0.55);
+    }
   }
   apply(theme: FieldTheme) { this.target = theme.bright; this.targetIntensity = theme.intensity; }
 
@@ -174,6 +248,18 @@ export class ArenaView {
       const flick = 0.85 + 0.15 * Math.sin(T * (9 + i) + i * 1.7) * Math.sin(T * 5.3 + i);
       f.rt.setScale(1 + 0.05 * Math.sin(T * 7 + i), flick);
     });
+    for (const c of this.castles) {
+      const t = c.side < 0 ? this.p1Color : this.p2Color;
+      c.banners.forEach((b, i) => { b.rt.rotation = Math.sin(T * 0.7 + i * 1.9 + c.side) * 1.4; });
+      c.lampGlows.forEach((g, i) => (g.color = C(t.r, t.g, t.b, (0.3 + 0.08 * Math.sin(T * 2 + i * 2.4)) * emph(A, 0.5) * 1.6)));
+      c.backGlow.color = C(t.r, t.g, t.b, 0.13 * emph(focus.v.environment, 0.6));
+      c.daisGlow.color = C(t.r, t.g, t.b, 0.2 * emph(A, 0.5) * 1.6);
+      c.motes.forEach(m => {
+        const p = (T * m.speed + m.phase) % 1;
+        m.img.rt.anchoredPosition = v2(c.side * 650 + m.ox + Math.sin(T * 0.9 + m.phase * 9) * 12, -110 + p * 190);
+        m.img.color = C(Math.min(1, t.r + 0.3), Math.min(1, t.g + 0.3), Math.min(1, t.b + 0.3), Math.sin(p * Math.PI) * 0.5 * emph(A, 0.5) * 1.5);
+      });
+    }
     this.wallTorches.forEach((w, i) => (w.color = C(1, 0.6, 0.3, (0.22 + 0.08 * Math.sin(T * 6 + i * 2.1)) * A)));
   }
 }

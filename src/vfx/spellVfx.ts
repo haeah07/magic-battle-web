@@ -230,6 +230,34 @@ export class SpellVfx {
     }
   }
 
+  /** 바닥을 따라 퍼지는 납작한(원근) 충격파 + 섬광, 선택적으로 수직 빛기둥 — 충돌·공개·피격 순간용 */
+  shockwave(at: V2, color: Color, strength = 1, maxSize = 900, pillar = false) {
+    if (strength <= 0) return;
+    this.co.start(async co => {
+      const ring = makeImage('ShockRing', this.rt, CLEAR, SF.ring(256, 0.03));
+      const ring2 = makeImage('ShockRing2', this.rt, CLEAR, SF.ring(256, 0.08));
+      const flare = makeImage('ShockFlare', this.rt, CLEAR, SF.glow(256));
+      const beam = pillar ? makeImage('ShockPillar', this.rt, CLEAR, SF.lightShaft()) : null;
+      for (const i of [ring, ring2, flare]) i.rt.setWorldPosition(at);
+      if (beam) { beam.rt.pivot = v2(0.5, 0.1); beam.rt.setWorldPosition(at); }
+      const d = 0.6 / this.speed;
+      try {
+        for (let t = 0; t < d; t += Time.dt) {
+          const k = t / d, e = 1 - (1 - k) ** 3;
+          const s1 = lerp(60, maxSize, e); ring.rt.sizeDelta = v2(s1, s1 * 0.42);
+          ring.color = C(Math.min(1, color.r + 0.25), Math.min(1, color.g + 0.25), Math.min(1, color.b + 0.25), 0.85 * (1 - k) * strength);
+          const k2 = clamp01((k - 0.1) / 0.9), e2 = 1 - (1 - k2) ** 3;
+          const s2 = lerp(40, maxSize * 0.7, e2); ring2.rt.sizeDelta = v2(s2, s2 * 0.42);
+          ring2.color = C(1, 1, 1, 0.5 * (1 - k2) * strength);
+          const fs = lerp(maxSize * 0.15, maxSize * 0.5, e); flare.rt.sizeDelta = v2(fs, fs * 0.8);
+          flare.color = C(color.r, color.g, color.b, 0.7 * (1 - k) * (1 - k) * strength);
+          if (beam) { beam.rt.sizeDelta = v2(maxSize * 0.3 * (1 - k * 0.5), maxSize * 0.8); beam.color = C(color.r, color.g, color.b, 0.55 * (1 - k) * strength); }
+          await co.frame();
+        }
+      } finally { ring.rt.destroy(); ring2.rt.destroy(); flare.rt.destroy(); beam?.rt.destroy(); }
+    });
+  }
+
   fieldWave(at: V2, color: Color, strength = 1) {
     if (strength <= 0) return;
     this.co.start(async co => {

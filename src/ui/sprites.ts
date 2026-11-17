@@ -118,3 +118,16 @@ export function croppedArt(textures: Phaser.Textures.TextureManager, id: string,
   refs.set(key, ref);
   return ref;
 }
+
+/** Small procedural canvas texture (stone walls, banners, skyline) registered like any other sprite. */
+export function makeCanvasSprite(textures: Phaser.Textures.TextureManager, key: string, w: number, h: number, draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void): SpriteRef {
+  const full = 'stone:' + key;
+  if (refs.has(full)) return refs.get(full)!;
+  const canvas = textures.createCanvas(full, w, h)!;
+  draw(canvas.getContext(), w, h);
+  canvas.refresh();
+  const ref: SpriteRef = { key: full, w, h, border: [0, 0, 0, 0] };
+  refs.set(full, ref);
+  return ref;
+}
+export const stoneSprite = (key: string) => spriteRef('stone:' + key);
