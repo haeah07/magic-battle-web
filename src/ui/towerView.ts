@@ -97,8 +97,8 @@ export class TowerView {
     this.ticks = rect('Ticks', bb).stretch(2, 2, 2, 2);
 
     this.stageBg = makeImage('Stage', this.plate, C(0.39, 0.83, 0.53, 0.2), SF.roundedRect(10), true);
-    this.stageBg.rt.place(v2(1, 1), v2(-14, 2), v2(78, 20), v2(1, 0));
-    this.stageText = makeText('Text', this.stageBg.rt, '온전함', 13, WHITE, 'MiddleCenter', true).shadowed(0.9);
+    this.stageBg.rt.place(v2(0.5, 0), v2(0, -6), v2(88, 22), v2(0.5, 1)); // HP 판 아래 가운데: HP 숫자·막대와 겹치지 않게
+    this.stageText = makeText('Text', this.stageBg.rt, '온전함', 14, WHITE, 'MiddleCenter', true).shadowed(0.9);
     rtOf(this.stageText).stretch();
     this.warnBg = makeImage('Warn', this.plate, C(1, 0.3, 0.25, 0.95), SF.roundedRect(10), true);
     this.warnBg.rt.place(v2(0, 1), v2(14, 2), v2(96, 22), v2(0, 0));

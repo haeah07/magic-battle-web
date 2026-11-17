@@ -331,7 +331,8 @@ export class BattleController {
     const hand = this.ui.hand;
     const editing = this.canEdit(this.active);
     if (!editing && this.sharedScreen) {
-      if (this.step === Step.GameOver) hand.trim(0);
+      // 결과 확인·연출 중에는 상대에게 넘길 필요 없는 뒷면 손패를 남기지 않는다
+      if (this.step === Step.GameOver || this.step === Step.Result || this.step === Step.Presenting) hand.trim(0);
       else hand.showBacks(Math.min(s.players[this.viewer].handCount, 10));
       return;
     }

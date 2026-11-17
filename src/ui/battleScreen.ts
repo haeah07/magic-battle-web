@@ -103,7 +103,7 @@ export class BattleScreen {
     this.chargeSub = makeText('Sub', this.chargeBtn.rt, '이번 턴 공격하지 않습니다', 14, C(0.82, 0.9, 1, 0.85), 'MiddleCenter');
     rtOf(this.chargeSub).stretch(8, 8, 40, 6);
     this.chargeSub.wrap = false;
-    this.chargeRing = makeOutline(this.chargeBtn.rt, MANA_COLOR, 14, 3);
+    this.chargeRing = makeOutline(this.chargeBtn.rt, MANA_COLOR, 16, 3);
     buttonFx(this.chargeBtn);
     this.chargeBtn.rt.setActive(false);
 

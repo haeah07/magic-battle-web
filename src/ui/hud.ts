@@ -172,10 +172,10 @@ export class TopBar {
 }
 
 // ============================================================================ Field HUD (FieldView)
-interface LevelCell { element: Element; dot: Img; glyph: Txt; pips: Img[]; bar: Img; rt: RT }
+interface LevelCell { element: Element; dot: Img; glyph: Txt; value: Txt; pips: Img[]; bar: Img; rt: RT }
 
 export class FieldHud {
-  static readonly PanelSize = v2(600, 58);
+  static readonly PanelSize = v2(640, 72); // 속성별 필드 수치(숫자)를 읽을 수 있게 조금 키움
   readonly rt: RT;
   private flash: Img; private iconA: Img; private iconB: Img; private glyph: Txt; private name: Txt; private badge: Txt;
   private cells: LevelCell[] = [];
@@ -196,34 +196,38 @@ export class FieldHud {
     this.iconB.preserveAspect = true;
     this.glyph = makeText('Glyph', nameRoot, '◆', 24, WHITE, 'MiddleCenter', true).shadowed();
     rtOf(this.glyph).place(v2(0, 0.5), v2(20, 0), v2(44, 34));
-    this.name = makeText('Text', nameRoot, '중립 필드', 19, WHITE, 'MiddleLeft', true).shadowed();
+    this.name = makeText('Text', nameRoot, '중립 필드', 20, WHITE, 'MiddleLeft', true).shadowed();
     rtOf(this.name).place(v2(0, 0.5), v2(50, 8), v2(150, 24), v2(0, 0.5));
-    this.badge = makeText('Badge', nameRoot, '', 12, lib.gold, 'MiddleLeft', true);
-    rtOf(this.badge).place(v2(0, 0.5), v2(50, -12), v2(150, 16), v2(0, 0.5));
+    this.badge = makeText('Badge', nameRoot, '', 13, lib.gold, 'MiddleLeft', true);
+    rtOf(this.badge).place(v2(0, 0.5), v2(50, -14), v2(150, 18), v2(0, 0.5));
     this.name.wrap = false; this.badge.wrap = false;
-    makeImage('Sep', this.rt, C(lib.gold.r, lib.gold.g, lib.gold.b, 0.35)).rt.place(v2(0, 0.5), v2(218, 0), v2(1, 34));
-    const row = rect('Levels', this.rt).place(v2(0, 0.5), v2(226, 0), v2(FieldHud.PanelSize.x - 236, 50), v2(0, 0.5));
+    makeImage('Sep', this.rt, C(lib.gold.r, lib.gold.g, lib.gold.b, 0.35)).rt.place(v2(0, 0.5), v2(218, 0), v2(1, 46));
+    const row = rect('Levels', this.rt).place(v2(0, 0.5), v2(226, 0), v2(FieldHud.PanelSize.x - 236, 60), v2(0, 0.5));
     const n = FIELD_ORDER.length;
     const cw = (FieldHud.PanelSize.x - 236) / n;
     FIELD_ORDER.forEach((e, i) => {
-      const cellRt = rect('Cell_' + Element[e], row).place(v2(0, 0.5), v2(cw * (i + 0.5), 0), v2(cw, 50));
+      const cellRt = rect('Cell_' + Element[e], row).place(v2(0, 0.5), v2(cw * (i + 0.5), 0), v2(cw, 60));
       const icon = lib.elementIcon(e);
+      // 윗줄: 속성 아이콘 + 필드 수치(숫자) / 가운데: 공명 Lv 눈금 / 아랫줄: 누적 막대
       const dot = makeImage('Dot', cellRt, icon ? WHITE : lib.elementColor(e), icon ?? SF.circle(64));
-      dot.rt.place(v2(0.5, 1), v2(0, -15), v2(24, 24));
+      dot.rt.place(v2(0.5, 0.5), v2(-cw * 0.25, 13), v2(24, 24));
+      const value = makeText('Value', cellRt, '0', 18, WHITE, 'MiddleLeft', true).shadowed(0.9);
+      rtOf(value).place(v2(0.5, 0.5), v2(-cw * 0.25 + 15, 13), v2(34, 24), v2(0, 0.5));
+      value.wrap = false;
       const glyph = makeText('Glyph', dot.rt, icon ? '' : lib.elementGlyph(e), 13, C(0.04, 0.05, 0.08), 'MiddleCenter', true);
       rtOf(glyph).stretch();
       const pips: Img[] = [];
       const ml = maxLevel(content.rules);
       for (let p = 0; p < ml; p++) {
         const pip = makeImage('Pip' + p, cellRt, WHITE, SF.diamond());
-        pip.rt.place(v2(0.5, 0), v2((p - (ml - 1) / 2) * 10, 12), v2(8, 8));
+        pip.rt.place(v2(0.5, 0.5), v2((p - (ml - 1) / 2) * 10, -8), v2(8, 8));
         pips.push(pip);
       }
       const barBack = makeImage('BarBack', cellRt, C(1, 1, 1, 0.1), SF.roundedRect(4), true);
-      barBack.rt.place(v2(0.5, 0), v2(0, 4), v2(cw - 18, 4));
+      barBack.rt.place(v2(0.5, 0.5), v2(0, -20), v2(cw - 14, 5));
       const bar = makeImage('Bar', barBack.rt, lib.elementColor(e), SF.roundedRect(4), true);
       bar.rt.anchorMin = v2(0, 0); bar.rt.anchorMax = v2(0.001, 1); bar.rt.offsetMin = v2(0, 0); bar.rt.offsetMax = v2(0, 0);
-      this.cells.push({ element: e, dot, glyph, pips, bar, rt: cellRt });
+      this.cells.push({ element: e, dot, glyph, value, pips, bar, rt: cellRt });
     });
     addUpdate({ rt: this.rt, update: dt => this.update(dt) });
   }
@@ -249,6 +253,8 @@ export class FieldHud {
     for (const c of this.cells) {
       const v = field.get(c.element);
       const lv = level(R, v);
+      c.value.text = String(Math.round(v));
+      c.value.color = v > 0 ? WHITE : C(0.7, 0.74, 0.8);
       c.pips.forEach((p, i) => (p.color = i < lv ? this.lib.elementColor(c.element) : C(1, 1, 1, 0.14)));
       c.bar.rt.anchorMax = v2(Math.max(0.001, Math.max(0, Math.min(1, v / R.fieldMax))), 1);
       c.rt.groupAlpha = v > 0 ? 1 : 0.4;
