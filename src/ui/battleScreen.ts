@@ -195,7 +195,8 @@ export class BattleScreen {
       this.slot(p).setFacing(true); // 두 슬롯 모두 상태 표시는 위쪽
       this.side(p).setSide(left);
     }
-    this.side(PlayerSlot.P1).rt.place(v2(0, 0), v2(LAYOUT.margin, LAYOUT.margin), PlayerHud.PanelSize, v2(0, 0));
+    // 양쪽 HUD 는 같은 높이의 위쪽 구석 — P1 왼쪽 / P2 오른쪽 (좌우 거울 구조)
+    this.side(PlayerSlot.P1).rt.place(v2(0, 1), v2(LAYOUT.margin, -LAYOUT.margin), PlayerHud.PanelSize, v2(0, 1));
     this.side(PlayerSlot.P2).rt.place(v2(1, 1), v2(-LAYOUT.margin, -LAYOUT.margin), PlayerHud.PanelSize, v2(1, 1));
     this.arena.setTeamColors(this.lib.playerColor(PlayerSlot.P1), this.lib.playerColor(PlayerSlot.P2));
   }
@@ -206,7 +207,9 @@ export class BattleScreen {
     const base = slot === PlayerSlot.P1 ? LAYOUT.p1Slot : LAYOUT.p2Slot;
     const center = v2(0.5, 0.5);
     this.matchupHint.rt.place(center, v2(base.x + LAYOUT.hintOffset.x, base.y + LAYOUT.hintOffset.y), MatchupHint.PanelSize, v2(0.5, 0));
-    this.invest.rt.place(center, v2(base.x + LAYOUT.investOffset.x, base.y + LAYOUT.investOffset.y), InvestPanel.PanelSize, v2(0.5, 1));
+    const left = slot === PlayerSlot.P1, o = LAYOUT.investOffset;
+    this.invest.setSide(left);
+    this.invest.rt.place(center, v2(base.x + (left ? o.x : -o.x), base.y + o.y), InvestPanel.PanelSize, v2(left ? 0 : 1, 0.5));
   }
 
   /** 마법이 중앙을 향해 움직이는 가로 방향: P1(왼쪽) → +1, P2(오른쪽) → -1 */

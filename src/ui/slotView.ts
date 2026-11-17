@@ -53,7 +53,7 @@ export class SlotView {
     this.outline = makeImage('Outline', this.rt, C(pc.r, pc.g, pc.b, 0), SF.roundedOutline(22, 2), true);
     this.outline.rt.stretch();
     this.caption = makeText('Caption', this.rt, slotLabel(slot), 22, pc, 'MiddleCenter', true).shadowed();
-    this.hint = makeText('Hint', this.rt, '', 24, C(0.78, 0.84, 0.9, 0.7), 'MiddleCenter', true).shadowed(0.8);
+    this.hint = makeText('Hint', this.rt, '', 21, C(0.82, 0.87, 0.93, 0.8), 'MiddleCenter', true).shadowed(0.8);
     rtOf(this.hint).stretch(18, 18, 18, 18);
     this.card = new CardView(this.rt, lib, 'SlotCard');
     this.card.rt.anchorMin = v2(0.5, 0.5); this.card.rt.anchorMax = v2(0.5, 0.5);
@@ -150,8 +150,11 @@ export class SlotView {
     this.pulse += dt;
     const a = this.dropHover ? 1 : this.dropHighlight ? 0.45 + 0.15 * Math.sin(this.pulse * 6) : this.active && this.card.rt.active ? 0.14 + 0.08 * Math.sin(this.pulse * 3) : 0;
     this.glow.color = C(pc.r, pc.g, pc.b, lerp(this.glow.color.a, a * K, 0.15));
-    this.outline.color = C(pc.r, pc.g, pc.b, this.dropHover ? 1 : this.dropHighlight ? 0.55 : 0);
     const hasCard = this.card.rt.active;
+    // 카드보다 사방 12px 큰 패드의 얇은 팀 색 테두리: 빈 슬롯에서는 자리를, 카드가 놓이면 카드 둘레를 보여 준다
+    const rim = (hasCard ? 0.5 : this.active ? 0.5 + 0.12 * Math.sin(this.pulse * 3) : 0.3) * (0.55 + 0.45 * this.emphasis);
+    this.outline.color = C(pc.r, pc.g, pc.b, this.dropHover ? 1 : this.dropHighlight ? 0.75 : rim);
+    this.plate.color = C(pc.r, pc.g, pc.b, hasCard ? 0 : (this.active ? 0.1 : 0.05) * (0.5 + 0.5 * this.emphasis));
     const ca = hasCard ? 0.55 : this.active ? 0.6 + 0.2 * Math.sin(this.pulse * 3) : 0.3;
     this.circle.color = C(pc.r, pc.g, pc.b, lerp(this.circle.color.a, ca * E, 0.12));
     this.circle.rt.rotation = this.pulse * (this.active ? 14 : 5);

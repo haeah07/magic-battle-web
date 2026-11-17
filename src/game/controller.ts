@@ -228,7 +228,8 @@ export class BattleController {
     this.ui.topBar.setRound(s.round);
     for (const slot of [PlayerSlot.P1, PlayerSlot.P2]) {
       const p = this.displayedPlayer(s, slot);
-      if (slot === this.viewer && this.client.controls(slot) && this.step !== Step.Presenting) p.mp = this.client.getPrivateView(slot).mp;
+      // 핸드오프 화면 뒤에서는 비공개 MP 를 쓰지 않는다 (화면을 넘겨받는 상대가 지출액을 읽을 수 있음)
+      if (slot === this.viewer && this.client.controls(slot) && this.step !== Step.Presenting && this.step !== Step.Handoff) p.mp = this.client.getPrivateView(slot).mp;
       let status: string, color: Color;
       if (s.phase === MatchPhase.GameOver) { status = p.hp > 0 ? '승리' : '패배'; color = p.hp > 0 ? th.positiveColor : th.negativeColor; }
       else if (this.step === Step.Presenting || s.phase === MatchPhase.RoundResolved) { status = ''; color = th.mutedTextColor; }
@@ -236,8 +237,8 @@ export class BattleController {
       else if (slot === this.active && (this.step === Step.Choosing || this.step === Step.Handoff)) { status = '선택 중'; color = th.accentColor; }
       else { status = '대기'; color = th.mutedTextColor; }
       const highlight = slot === this.active && this.step === Step.Choosing;
-      // 한 화면 2인(핫시트): 지금 고르는 쪽에 '차례' 표시. 1인 시점(봇): 나 / 상대
-      const role = this.sharedScreen ? (highlight ? '차례' : '') : slot === this.viewer ? '나' : '상대';
+      // 한 화면 2인(핫시트): 상태 글자('선택 중')와 발광으로 차례를 표시. 1인 시점(봇): 이름 옆에 나 / 상대
+      const role = this.sharedScreen ? '' : slot === this.viewer ? '나' : '상대';
       this.ui.side(slot).render(p, status, color, highlight, role);
     }
     if (this.step !== Step.Presenting) {
@@ -285,8 +286,8 @@ export class BattleController {
       const editable = this.canEdit(slot);
       const pub = s.players[slot];
       const sel = editable ? this.selectedDef() : null;
-      if (pub.submitted && controlled && slot === this.viewer) {
-        // own submitted card stays visible to its owner only
+      if (pub.submitted && controlled && slot === this.viewer && this.step !== Step.Handoff) {
+        // own submitted card stays visible to its owner only (핸드오프 화면 뒤에서는 뒷면)
         const pv = this.client.getPrivateView(slot);
         const def = pv.submittedCharge ? this.content.chargeCard : pv.submittedPass ? this.content.passCard : pv.submittedCardId ? this.content.getCard(pv.submittedCardId) ?? null : null;
         const sx = pv.submittedExtraMp;
@@ -318,10 +319,10 @@ export class BattleController {
       } else if (editable) {
         this.selection.delete(slot);
         view.showEmpty('카드를 끌어오거나\n클릭하세요', true);
-        view.setStatus('선택 중', th.accentColor);
+        view.setStatus('', th.accentColor);
       } else {
-        view.showEmpty('', false);
-        view.setStatus(this.step === Step.Handoff || slot === this.viewer ? '' : '고르는 중', th.mutedTextColor);
+        view.showEmpty(this.step === Step.Handoff || slot === this.viewer ? '' : '고르는 중', false);
+        view.setStatus('', th.mutedTextColor);
       }
     }
   }
@@ -361,7 +362,7 @@ export class BattleController {
 
   private renderMp(s: PublicMatchState) {
     const p = this.displayedPlayer(s, this.viewer);
-    if (this.client.controls(this.viewer) && this.step !== Step.Presenting) p.mp = this.client.getPrivateView(this.viewer).mp;
+    if (this.client.controls(this.viewer) && this.step !== Step.Presenting && this.step !== Step.Handoff) p.mp = this.client.getPrivateView(this.viewer).mp;
     const d = this.canEdit(this.viewer) ? this.selectedDef() : null;
     const pending = d ? this.terms(d).totalCost(this.extraFor(this.viewer)) : 0;
     const R = this.content.rules;

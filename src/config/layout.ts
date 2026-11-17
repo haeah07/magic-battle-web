@@ -30,10 +30,10 @@ export const LAYOUT = {
 
   bannerY: 40,
   toastY: -42,
-  investOffset: v2(0, -134),          // MP 투자 패널: 현재 선택 중인 슬롯 기준 오프셋 (슬롯 아래, 슬롯 0.8배 기준)
+  investOffset: v2(112, 10),          // MP 투자 패널: 선택 중인 슬롯의 '중앙 쪽 옆' (x = 슬롯 중심에서 패널 가장자리까지, 좌우 자동 반전) — 손패와 겹치지 않게
   hintOffset: v2(0, 160),             // 상성 힌트: 현재 선택 중인 슬롯 기준 오프셋 (슬롯 위)
   fieldHudTop: 72,                    // 상단 필드 HUD 의 화면 위에서의 거리
-  battleLogTop: 96,
+  battleLogTop: 160,                  // 양쪽 HUD 가 위쪽 구석으로 옮겨져 로그는 그 아래
 };
 
 /** 카드 / 손패 크기 설정 */

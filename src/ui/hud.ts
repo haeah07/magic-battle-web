@@ -36,19 +36,19 @@ export class PlayerHud {
     const avatar = makeImage('Avatar', this.socket.rt, pc, SF.circle(128));
     avatar.rt.stretch(12, 12, 12, 12);
     rtOf(makeText('Label', avatar.rt, slotLabel(slot), 22, C(0.05, 0.06, 0.09), 'MiddleCenter', true)).stretch();
-    this.name = makeText('Name', this.rt, slot === PlayerSlot.P1 ? 'PLAYER 1' : 'PLAYER 2', 21, pc, 'MiddleLeft', true).shadowed();
+    this.name = makeText('Name', this.rt, slot === PlayerSlot.P1 ? 'PLAYER 1' : 'PLAYER 2', 24, pc, 'MiddleLeft', true).shadowed();
     this.role = makeText('Role', this.rt, '', 14, lib.gold, 'MiddleLeft', true);
     this.statusDot = makeImage('Dot', this.rt, WHITE, SF.diamond());
-    this.status = makeText('Status', this.rt, '', 15, WHITE, 'MiddleLeft', true).shadowed(0.9);
+    this.status = makeText('Status', this.rt, '', 18, WHITE, 'MiddleLeft', true).shadowed(0.9);
     this.gemGlow = makeImage('GemGlow', this.rt, C(0.35, 0.5, 1, 0.35), SF.glow(128));
     this.gem = makeImage('MpGem', this.rt, C(0.33, 0.45, 1), SF.diamond());
     makeImage('Inner', this.gem.rt, C(1, 1, 1, 0.2), SF.diamond()).rt.stretch(9, 9, 9, 9);
     this.mpValue = makeText('Value', this.gem.rt, '4', 24, WHITE, 'MiddleCenter', true).shadowed(0.9);
     rtOf(this.mpValue).stretch(-10, -10, 0, 0);
-    this.mpMax = makeText('Max', this.rt, 'MP /10', 13, C(0.62, 0.72, 1), 'MiddleLeft', true);
+    this.mpMax = makeText('Max', this.rt, 'MP /10', 16, C(0.7, 0.78, 1), 'MiddleLeft', true);
     for (let i = 0; i < 10; i++) this.pips.push(makeImage('Pip' + i, this.rt, WHITE, SF.diamond()));
-    this.cards = makeText('Cards', this.rt, '', 13, th.mutedTextColor, 'MiddleRight');
-    this.note = makeText('Note', this.rt, '', 12, C(th.mutedTextColor.r, th.mutedTextColor.g, th.mutedTextColor.b, 0.8), 'MiddleRight');
+    this.cards = makeText('Cards', this.rt, '', 16, C(0.72, 0.76, 0.82), 'MiddleRight');
+    this.note = makeText('Note', this.rt, '', 14, C(th.mutedTextColor.r, th.mutedTextColor.g, th.mutedTextColor.b, 0.9), 'MiddleRight');
     for (const t of [this.name, this.role, this.status, this.mpMax, this.cards, this.note]) t.wrap = false;
     this.setSide(slot === PlayerSlot.P1);
     addUpdate({ rt: this.rt, update: dt => this.update(dt) });
@@ -59,26 +59,27 @@ export class PlayerHud {
     const s = home ? 1 : -1;
     const edge = v2(home ? 0 : 1, 0.5), pivotIn = v2(home ? 0 : 1, 0.5);
     const align = home ? 'MiddleLeft' : 'MiddleRight', alignOut = home ? 'MiddleRight' : 'MiddleLeft';
-    this.socket.rt.place(edge, v2(s * 50, 4), v2(78, 78));
-    for (const t of [this.name, this.role, this.status, this.mpMax]) t.alignment = align;
-    rtOf(this.name).place(edge, v2(s * 98, 32), v2(150, 26), pivotIn);
-    rtOf(this.role).place(edge, v2(s * 98, 10), v2(60, 18), pivotIn);
-    this.statusDot.rt.place(edge, v2(s * 140, 10), v2(9, 9));
-    rtOf(this.status).place(edge, v2(s * 150, 10), v2(110, 20), pivotIn);
-    this.gem.rt.place(edge, v2(s * 118, -28), v2(46, 46));
-    this.gemGlow.rt.place(edge, v2(s * 118, -28), v2(96, 96));
-    rtOf(this.mpMax).place(edge, v2(s * 146, -18), v2(70, 18), pivotIn);
-    this.pips.forEach((p, i) => p.rt.place(edge, v2(s * (154 + i * 17), -36), v2(13, 13)));
+    // 정보 구조(양쪽 거울): ① 아바타 ② 이름 / 상태('선택 중' 등) ③ MP 보석 + 눈금 ④ 바깥쪽 위: 손패·덱 / 라운드 MP 회복
+    this.socket.rt.place(edge, v2(s * 52, 2), v2(78, 78));
+    for (const t of [this.name, this.status, this.mpMax]) t.alignment = align;
+    rtOf(this.name).place(edge, v2(s * 104, 31), v2(180, 30), pivotIn);
+    rtOf(this.role).setActive(false); // 나/상대 는 이름 옆에 붙인다
+    this.statusDot.rt.place(edge, v2(s * 110, 6), v2(10, 10));
+    rtOf(this.status).place(edge, v2(s * 124, 6), v2(130, 24), pivotIn);
+    this.gem.rt.place(edge, v2(s * 124, -30), v2(48, 48));
+    this.gemGlow.rt.place(edge, v2(s * 124, -30), v2(100, 100));
+    rtOf(this.mpMax).place(edge, v2(s * 154, -20), v2(80, 20), pivotIn);
+    this.pips.forEach((p, i) => p.rt.place(edge, v2(s * (160 + i * 17), -38), v2(13, 13)));
     this.cards.alignment = alignOut; this.note.alignment = alignOut;
     const far = v2(home ? 1 : 0, 0.5);
-    rtOf(this.cards).place(far, v2(-s * 16, 32), v2(120, 20), v2(home ? 1 : 0, 0.5));
-    rtOf(this.note).place(far, v2(-s * 16, 12), v2(150, 18), v2(home ? 1 : 0, 0.5));
+    rtOf(this.cards).place(far, v2(-s * 16, 31), v2(130, 22), v2(home ? 1 : 0, 0.5));
+    rtOf(this.note).place(far, v2(-s * 16, 8), v2(150, 18), v2(home ? 1 : 0, 0.5));
   }
 
   render(p: PublicPlayerState, status: string, statusColor: Color, highlight: boolean, role: string) {
     this.highlight = highlight;
     this.submitted = status === '제출 완료';
-    this.role.text = role;
+    this.name.text = (this.slot === PlayerSlot.P1 ? 'PLAYER 1' : 'PLAYER 2') + (role ? ` · ${role}` : '');
     this.status.text = status;
     this.status.color = statusColor;
     this.statusDot.color = statusColor;
@@ -144,27 +145,24 @@ export class TopBar {
     rtOf(makeText('Label', medal.rt, 'ROUND', 14, th.mutedTextColor, 'MiddleRight', true)).place(v2(0.5, 0.5), v2(-4, 0), v2(70, 30), v2(1, 0.5));
     this.round = makeText('Round', medal.rt, '01', 28, gold, 'MiddleLeft', true).shadowed(0.9);
     rtOf(this.round).place(v2(0.5, 0.5), v2(4, 0), v2(60, 36), v2(0, 0.5));
-    const icons = rect('Icons', this.rt).place(v2(0, 1), v2(LAYOUT.margin, -12), v2(260, 64), v2(0, 1));
-    this.buttons['상성표'] = this.make(icons, lib, '상성표', '◈', '상성', 0, () => this.onMatchup.forEach(f => f()), 1);
-    this.buttons['상세'] = this.make(icons, lib, '상세', '≡', '상세', 1, () => this.onDetail.forEach(f => f()), 1);
-    this.buttons['새 게임'] = this.make(icons, lib, '새 게임', '⇄', '새 게임', 2, () => this.onRestart.forEach(f => f()), 1);
-    this.debugBtn = this.buttons['디버그'] = this.make(icons, lib, '디버그', '⊕', '디버그', 3, () => this.onDebug.forEach(f => f()), 0.4);
+    // 보조 버튼: 화면 왼쪽 아래 구석의 작은 글자 버튼 줄 (아이콘 + 11px 캡션 → 읽을 수 있는 글자 하나로)
+    const icons = rect('Icons', parent).place(v2(0, 0), v2(LAYOUT.margin, LAYOUT.margin), v2(300, 36), v2(0, 0));
+    this.buttons['상성표'] = this.make(icons, lib, '상성표', 0, 70, () => this.onMatchup.forEach(f => f()), 1);
+    this.buttons['상세'] = this.make(icons, lib, '상세', 78, 58, () => this.onDetail.forEach(f => f()), 1);
+    this.buttons['새 게임'] = this.make(icons, lib, '새 게임', 144, 84, () => this.onRestart.forEach(f => f()), 1);
+    this.debugBtn = this.buttons['디버그'] = this.make(icons, lib, '⊕', 236, 36, () => this.onDebug.forEach(f => f()), 0.45);
   }
 
-  private make(parent: RT, lib: VisualLibrary, name: string, glyph: string, caption: string, index: number, click: () => void, alpha: number) {
+  private make(parent: RT, lib: VisualLibrary, label: string, x: number, w: number, click: () => void, alpha: number) {
     const th = THEME;
-    const size = index === 3 ? 30 : 44;
-    const img = makeImage(name, parent, C(1, 1, 1, alpha), SF.iconSocket(), false, true);
-    img.rt.place(v2(0, 1), v2(index * 56 + (index === 3 ? 7 : 0), index === 3 ? -7 : 0), v2(size, size), v2(0, 1));
+    const img = makeImage(label, parent, C(0.05, 0.08, 0.13, 0.62 * alpha + 0.1), SF.roundedRect(12), true, true);
+    img.rt.place(v2(0, 0), v2(x, 0), v2(w, 36), v2(0, 0));
     const b = new Button(img);
     b.colorTint = false;
     b.onClick(click);
-    const t = makeText('Glyph', img.rt, glyph, index === 3 ? 15 : 21, C(lib.gold.r, lib.gold.g, lib.gold.b, alpha), 'MiddleCenter', true);
-    rtOf(t).stretch(0, 0, 0, 2);
-    const cap = makeText('Caption', img.rt, caption, 11, C(th.mutedTextColor.r, th.mutedTextColor.g, th.mutedTextColor.b, 0.85 * alpha), 'UpperCenter');
-    rtOf(cap).place(v2(0.5, 0), v2(0, -2), v2(60, 14), v2(0.5, 1));
-    cap.wrap = false;
-    rtOf(cap).setActive(index !== 3);
+    const t = makeText('Label', img.rt, label, 16, C(th.textColor.r, th.textColor.g, th.textColor.b, 0.82 * alpha + 0.1), 'MiddleCenter', true);
+    rtOf(t).stretch();
+    t.wrap = false;
     buttonFx(b);
     return b;
   }
@@ -307,6 +305,10 @@ export class InvestPanel {
     addUpdate({ rt: this.rt, update: dt => this.update(dt) });
   }
 
+  /** 패널이 슬롯의 중앙 쪽 옆에 놓인다: 슬롯이 왼쪽(P1)이면 패널 왼쪽 가장자리, 오른쪽(P2)이면 오른쪽 가장자리에서 슬롯을 가리킨다 */
+  setSide(slotIsLeft: boolean) {
+    this.pointer.rt.place(v2(slotIsLeft ? 0 : 1, 0.5), v2(slotIsLeft ? -2 : 2, 0), v2(26, 26));
+  }
   get visible() { return this.rt.blocksRaycasts; }
   hide() { this.showT = 1; this.rt.groupAlpha = 0; this.rt.blocksRaycasts = false; }
 
