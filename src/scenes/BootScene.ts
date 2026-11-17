@@ -1,7 +1,6 @@
 // Loads every texture (Unity PNGs + exported procedural UI sprites) and the Korean font, then starts the battle.
 import Phaser from 'phaser';
 import { preloadSprites, registerSize } from '../ui/sprites';
-import { createStoneTextures } from '../vfx/stoneTextures';
 
 export class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
@@ -22,7 +21,6 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('white', 4, 4);
     g.destroy();
     registerSize(this.textures);
-    createStoneTextures(this.textures);
     try {
       await Promise.all([document.fonts.load('20px NanumGothic', '가A'), document.fonts.load('20px NanumGothicBold', '가A')]);
     } catch { /* fall back to system Korean fonts */ }
